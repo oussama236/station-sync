@@ -5,9 +5,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tn.spring.stationsync.Dtos.ShellFilterResponse;
+import tn.spring.stationsync.Entities.NatureOperation;
 import tn.spring.stationsync.Entities.Shell;
+import tn.spring.stationsync.Entities.Station;
 import tn.spring.stationsync.Entities.Statut;
 import tn.spring.stationsync.Services.IShellService;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -24,10 +29,18 @@ public class ShellController {
 
     @GetMapping("/shells")
     @ResponseBody
-    public List<Shell> getShells() {
+    public ResponseEntity<?> getShells() {
         List<Shell> listShells = shellService.getAllShells();
-        return listShells;
+
+        if (listShells.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Aucun Shell disponible.");
+        }
+
+        ShellFilterResponse response = new ShellFilterResponse(listShells);
+        return ResponseEntity.ok(response);
     }
+
 
 
     @GetMapping("/shells/{shell-id}")
@@ -76,22 +89,31 @@ public class ShellController {
     //statut/OK                    // /shells?statut=OK
 
     public List<Shell> getShellsByStatut(@PathVariable Statut statut) {
+
         return shellService.getShellsByStatut(statut);
     }
 
 
-    //filter?category=FACTURE_CARBURANT&site=ZAHRA&statuts=OK
+    // ✅ 🔍 NEW: Filter Shells by natureOperation, station and statuts
     @GetMapping("/shells/filter")
     public ResponseEntity<?> getFilteredShells(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String site,
-            @RequestParam(required = false) List<Statut> statuts
+            @RequestParam(required = false) NatureOperation category,
+            @RequestParam(required = false) Station station,
+            @RequestParam(required = false) Statut statut
     ) {
-        List<Shell> result = shellService.findFiltered(category, site, statuts);
+        List<Statut> statutList = new ArrayList<>();
+
+        if (statut != null) {
+            statutList.add(statut);
+        }
+
+        List<Shell> result = shellService.filterShells(category, station, statutList);
+
         if (result.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("Aucun Shell trouvé avec les critères fournis.");
         }
+
         ShellFilterResponse response = new ShellFilterResponse(result);
         return ResponseEntity.ok(response);
     }

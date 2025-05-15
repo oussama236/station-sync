@@ -1,8 +1,6 @@
 package tn.spring.stationsync.Services;
 
-import tn.spring.stationsync.Entities.Banque;
-import tn.spring.stationsync.Entities.Shell;
-import tn.spring.stationsync.Entities.Statut;
+import tn.spring.stationsync.Entities.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,7 +26,7 @@ public interface IShellService {
 
     List<Shell> getShellsByStatut(Statut statut);
 
-    List<Shell> findFiltered(String category, String site, List<Statut> statuts);
+    List<Shell> filterShells(NatureOperation nature, Station station, List<Statut> statuts);
 
 
 }

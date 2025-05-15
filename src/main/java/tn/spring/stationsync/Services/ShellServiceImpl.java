@@ -1,7 +1,9 @@
 package tn.spring.stationsync.Services;
 
 
+import tn.spring.stationsync.Entities.NatureOperation;
 import tn.spring.stationsync.Entities.Shell;
+import tn.spring.stationsync.Entities.Station;
 import tn.spring.stationsync.Entities.Statut;
 import tn.spring.stationsync.Repositories.ShellRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,12 +18,23 @@ import java.util.List;
 @Service
 public class ShellServiceImpl implements IShellService {
 
+
     @Autowired
     private ShellRepository shellRepository;
 
 
     @Override
     public Shell saveShell(Shell shell) {
+
+        if (shell.getNatureOperation() == NatureOperation.FACTURE_LUBRIFIANT) {
+            shell.setStation(Station.ZAHRA); // on force
+        }
+
+        // Si une combinaison illogique a été envoyée (ex: FACTURE_LUBRIFIANT + BOUMHAL), on bloque
+        if (shell.getNatureOperation() == NatureOperation.FACTURE_LUBRIFIANT
+                && shell.getStation() != Station.ZAHRA) {
+            throw new IllegalArgumentException("La nature FACTURE_LUBRIFIANT est uniquement disponible pour la station ZAHRA.");
+        }
 
         shell.calculateDatePrelevement();
         LocalDate today = LocalDate.now();
@@ -87,8 +100,12 @@ public class ShellServiceImpl implements IShellService {
     }
 
     @Override
-    public List<Shell> findFiltered(String category, String site, List<Statut> statuts) {
-        return shellRepository.findByNatureAndStatutIn(category, site, statuts);
+    public List<Shell> filterShells(NatureOperation nature, Station station, List<Statut> statuts) {
+        System.out.println("🎯 FILTRAGE REÇU =>");
+        System.out.println(" - nature = " + nature);
+        System.out.println(" - station = " + station);
+        System.out.println(" - statuts = " + statuts);
+        return shellRepository.findByFilters(nature, station, statuts);
     }
 }
 

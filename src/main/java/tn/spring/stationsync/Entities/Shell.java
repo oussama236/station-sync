@@ -38,6 +38,18 @@ public class Shell {
     @Enumerated(EnumType.STRING)
     private Statut statut;
 
+
+    public Station getStation() {
+        return station;
+    }
+
+    public void setStation(Station station) {
+        this.station = station;
+    }
+
+    @Enumerated(EnumType.STRING)
+    private Station station;
+
     // Getters and Setters
 
 
@@ -95,13 +107,11 @@ public class Shell {
         LocalDate date = this.dateOperation;
 
         switch (this.natureOperation) {
-            case AVOIR_BOUMHAL:
-            case AVOIR_ZAHRA:
+            case AVOIR:
                 date = date.plusDays(1);
                 break;
 
-            case FACTURE_CARBURANT_BOUMHAL:
-            case FACTURE_CARBURANT_ZAHRA:
+            case FACTURE_CARBURANT:
                 date = date.plusDays(3);
                 break;
 
@@ -110,8 +120,7 @@ public class Shell {
                 date = date.plusMonths(1).withDayOfMonth(date.plusMonths(1).lengthOfMonth());
                 break;
 
-            case LOYER_BOUMHAL:
-            case LOYER_ZAHRA:
+            case LOYER:
                 // Move to the last day of the current month
                 date = date.withDayOfMonth(date.lengthOfMonth());
                 break;
