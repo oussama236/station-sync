@@ -1,5 +1,6 @@
 package tn.spring.stationsync.Entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
@@ -102,6 +103,20 @@ public class Shell {
         this.statut = statut;
     }
 
+
+    @ManyToOne
+    @JoinColumn(name = "prelevement_id")
+    @JsonIgnore
+
+    private Prelevement prelevement;
+
+    public Prelevement getPrelevement() {
+        return prelevement;
+    }
+
+    public void setPrelevement(Prelevement prelevement) {
+        this.prelevement = prelevement;
+    }
 
     public void calculateDatePrelevement() {
         LocalDate date = this.dateOperation;

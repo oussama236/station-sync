@@ -7,6 +7,8 @@ import tn.spring.stationsync.Entities.Shell;
 import tn.spring.stationsync.Entities.Station;
 import tn.spring.stationsync.Entities.Statut;
 import org.springframework.data.jpa.repository.Query;
+import java.time.LocalDate;
+
 
 import java.util.List;
 
@@ -25,6 +27,8 @@ public interface ShellRepository extends JpaRepository<Shell, Integer> {
             @Param("station") Station station,
             @Param("statuts") List<Statut> statuts
     );
+    List<Shell> findByStatutAndDatePrelevementBefore(Statut statut, LocalDate date);
+
 }
 
 

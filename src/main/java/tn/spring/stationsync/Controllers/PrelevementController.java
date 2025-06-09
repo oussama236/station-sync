@@ -2,7 +2,9 @@ package tn.spring.stationsync.Controllers;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tn.spring.stationsync.Dtos.PrelevementDetailsResponse;
 import tn.spring.stationsync.Entities.Prelevement;
 import tn.spring.stationsync.Services.IPrelevementService;
 
@@ -53,6 +55,16 @@ public class PrelevementController {
     public void removeprelevement(@PathVariable("prelevement-id") Integer idPrelevement) {
         prelevementService.deletePrelevement(idPrelevement);
     }
+    @GetMapping("/{id}")
+    public ResponseEntity<PrelevementDetailsResponse> getPrelevementwithResume(@PathVariable Integer id) {
+        return ResponseEntity.ok(prelevementService.getPrelevementAvecResume(id));
+    }
 
+    @PostMapping("/assign-shells/{id}")
+    public ResponseEntity<Prelevement> assignShells(@PathVariable Integer id) {
+        Prelevement p = prelevementService.getPrelevement(id);
+        Prelevement updated = prelevementService.assignShellsToPrelevement(p);
+        return ResponseEntity.ok(updated);
+    }
 
 }

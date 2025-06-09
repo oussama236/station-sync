@@ -1,7 +1,10 @@
 package tn.spring.stationsync.Entities;
 
 import jakarta.persistence.*;
+
+import java.time.LocalDate;
 import java.util.Date;
+import java.util.List;
 
 @Entity
 public class Prelevement {
@@ -10,8 +13,7 @@ public class Prelevement {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer idPrelevement;
 
-    @Temporal(TemporalType.DATE)
-    private Date dateOperation;
+    private LocalDate dateOperation;
 
     @Column(nullable = false)
     private final Integer numeroCompte = 20;
@@ -27,13 +29,6 @@ public class Prelevement {
         this.idPrelevement = idPrelevement;
     }
 
-    public Date getDateOperation() {
-        return dateOperation;
-    }
-
-    public void setDateOperation(Date dateOperation) {
-        this.dateOperation = dateOperation;
-    }
 
     public Integer getNumeroCompte() {
         return numeroCompte;
@@ -46,4 +41,23 @@ public class Prelevement {
     public void setMontant(Double montant) {
         this.montant = montant;
     }
+
+    public LocalDate getDateOperation() {
+        return dateOperation;
+    }
+
+    public void setDateOperation(LocalDate dateOperation) {
+        this.dateOperation = dateOperation;
+    }
+
+    public List<Shell> getShells() {
+        return shells;
+    }
+
+    public void setShells(List<Shell> shells) {
+        this.shells = shells;
+    }
+
+    @OneToMany(mappedBy = "prelevement")
+    private List<Shell> shells;
 }

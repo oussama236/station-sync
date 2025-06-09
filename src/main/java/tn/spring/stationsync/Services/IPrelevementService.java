@@ -1,6 +1,7 @@
 package tn.spring.stationsync.Services;
 
 
+import tn.spring.stationsync.Dtos.PrelevementDetailsResponse;
 import tn.spring.stationsync.Entities.Prelevement;
 
 import java.util.List;
@@ -21,5 +22,11 @@ public interface IPrelevementService {
 
     //Update Prelevement by ID
     Prelevement updatePrelevement (Prelevement  p);
+
+    PrelevementDetailsResponse getPrelevementAvecResume(Integer id);
+
+    Prelevement assignShellsToPrelevement(Prelevement prelevement);
+
+
 }
 
