@@ -51,7 +51,7 @@ public class ShellServiceImpl implements IShellService {
     @Override
 
     public List<Shell> getAllShells() {
-        return shellRepository.findAll();
+        return shellRepository.findAllOrderedByIdDesc();
     }
 
 

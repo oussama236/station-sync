@@ -16,6 +16,9 @@ import java.util.List;
 @Repository
 public interface ShellRepository extends JpaRepository<Shell, Integer> {
 
+    @Query("SELECT s FROM Shell s ORDER BY s.idShell DESC")
+    List<Shell> findAllOrderedByIdDesc();
+
     List<Shell> findByStatut(Statut statut);
 
     @Query("SELECT s FROM Shell s WHERE "
