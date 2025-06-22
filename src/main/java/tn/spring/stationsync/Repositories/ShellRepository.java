@@ -24,7 +24,10 @@ public interface ShellRepository extends JpaRepository<Shell, Integer> {
     @Query("SELECT s FROM Shell s WHERE "
             + "(:nature IS NULL OR s.natureOperation = :nature) AND "
             + "(:station IS NULL OR s.station = :station) AND "
-            + "(:#{#statuts == null || #statuts.isEmpty()} = true OR s.statut IN :statuts)")
+            + "(:#{#statuts == null || #statuts.isEmpty()} = true OR s.statut IN :statuts)"
+            + "ORDER BY s.idShell DESC")
+
+
     List<Shell> findByFilters(
             @Param("nature") NatureOperation nature,
             @Param("station") Station station,

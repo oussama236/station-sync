@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tn.spring.stationsync.Dtos.ShellFilterResponse;
+import tn.spring.stationsync.Dtos.ShellSearchCriteria;
 import tn.spring.stationsync.Entities.NatureOperation;
 import tn.spring.stationsync.Entities.Shell;
 import tn.spring.stationsync.Entities.Station;
@@ -117,6 +118,13 @@ public class ShellController {
         ShellFilterResponse response = new ShellFilterResponse(result);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/advanced-search")
+    public List<Shell> searchShells(@RequestBody ShellSearchCriteria criteria) {
+        return shellService.searchShells(criteria);
+    }
+
+
 
 
 

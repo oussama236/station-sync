@@ -1,5 +1,6 @@
 package tn.spring.stationsync.Services;
 
+import tn.spring.stationsync.Dtos.ShellSearchCriteria;
 import tn.spring.stationsync.Entities.*;
 
 import java.util.List;
@@ -28,5 +29,5 @@ public interface IShellService {
 
     List<Shell> filterShells(NatureOperation nature, Station station, List<Statut> statuts);
 
-
+    List<Shell> searchShells(ShellSearchCriteria criteria);
 }

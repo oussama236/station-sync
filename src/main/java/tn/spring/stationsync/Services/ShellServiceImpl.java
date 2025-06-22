@@ -1,6 +1,13 @@
 package tn.spring.stationsync.Services;
 
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import tn.spring.stationsync.Dtos.ShellSearchCriteria;
 import tn.spring.stationsync.Entities.NatureOperation;
 import tn.spring.stationsync.Entities.Shell;
 import tn.spring.stationsync.Entities.Station;
@@ -8,16 +15,18 @@ import tn.spring.stationsync.Entities.Statut;
 import tn.spring.stationsync.Repositories.ShellRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.scheduling.annotation.Scheduled;
 import jakarta.annotation.PostConstruct;
 
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class ShellServiceImpl implements IShellService {
 
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
     private ShellRepository shellRepository;
@@ -68,11 +77,33 @@ public class ShellServiceImpl implements IShellService {
     }
 
     @Override
-    public Shell updateShell(Shell s) {
-        s.calculateDatePrelevement(); // recalculate based on new operation date
-        shellRepository.save(s);
-        return s;
+    public Shell updateShell(Shell updatedShell) {
+        // 🔍 Récupérer l'entité existante dans la base
+        Shell existingShell = shellRepository.findById(updatedShell.getIdShell())
+                .orElseThrow(() -> new IllegalArgumentException("Shell not found"));
+
+        // 🛠️ Mettre à jour les champs modifiables
+        existingShell.setDateOperation(updatedShell.getDateOperation());
+        existingShell.setNatureOperation(updatedShell.getNatureOperation());
+        existingShell.setNumeroFacture(updatedShell.getNumeroFacture());
+        existingShell.setMontant(updatedShell.getMontant());
+        existingShell.setStation(updatedShell.getStation());
+
+        // 🧮 Recalcul automatique de la date de prélèvement
+        existingShell.calculateDatePrelevement();
+
+        // 🔁 Mise à jour automatique du statut en fonction de la nouvelle date de prélèvement
+        LocalDate today = LocalDate.now();
+        if (!existingShell.getDatePrelevement().isAfter(today)) {
+            existingShell.setStatut(Statut.EN_ATTENTE);
+        } else {
+            existingShell.setStatut(Statut.VIDE);
+        }
+
+        // 💾 Enregistrement
+        return shellRepository.save(existingShell);
     }
+
 
     @PostConstruct
     public void runOnStartup() {
@@ -83,15 +114,24 @@ public class ShellServiceImpl implements IShellService {
     @Override
     public void updateStatutsWhenPrelevementDue() {
         LocalDate today = LocalDate.now();
-        List<Shell> shells = shellRepository.findByStatut(Statut.VIDE);
+        List<Shell> allShells = shellRepository.findAll();
 
-        for (Shell shell : shells) {
-            if (!shell.getDatePrelevement().isAfter(today)) {
-                shell.setStatut(Statut.EN_ATTENTE);
-                shellRepository.save(shell);
+        List<Shell> modifiedShells = new ArrayList<>();
 
+        for (Shell shell : allShells) {
+            if (shell.getDatePrelevement() == null) continue;
+
+            Statut newStatut = shell.getDatePrelevement().isAfter(today)
+                    ? Statut.VIDE
+                    : Statut.EN_ATTENTE;
+
+            if (shell.getStatut() != newStatut) {
+                shell.setStatut(newStatut);
+                modifiedShells.add(shell); // on ne sauvegarde que ceux qui changent
             }
         }
+
+        shellRepository.saveAll(modifiedShells); // sauvegarde groupée ➤ meilleure perf
     }
 
     @Override
@@ -106,6 +146,77 @@ public class ShellServiceImpl implements IShellService {
         System.out.println(" - station = " + station);
         System.out.println(" - statuts = " + statuts);
         return shellRepository.findByFilters(nature, station, statuts);
+    }
+
+    @Override
+    public List<Shell> searchShells(ShellSearchCriteria criteria) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Shell> query = cb.createQuery(Shell.class);
+        Root<Shell> root = query.from(Shell.class);
+
+        List<Predicate> predicates = new ArrayList<>();
+
+        // Date exacte
+        if (criteria.getExactDateOperation() != null) {
+            predicates.add(cb.equal(root.get("dateOperation"), criteria.getExactDateOperation()));
+        }
+
+        // Intervalle de dates
+        if (criteria.getStartDateOperation() != null && criteria.getEndDateOperation() != null) {
+            predicates.add(cb.between(root.get("dateOperation"), criteria.getStartDateOperation(), criteria.getEndDateOperation()));
+        }
+
+        // Montant exact
+        if (criteria.getExactMontant() != null) {
+            predicates.add(cb.equal(root.get("montant"), criteria.getExactMontant()));
+        }
+
+        // Intervalle de montants
+        if (criteria.getMinMontant() != null && criteria.getMaxMontant() != null) {
+            predicates.add(cb.between(root.get("montant"), criteria.getMinMontant(), criteria.getMaxMontant()));
+        }
+
+        // Natures
+        if (criteria.getNatures() != null && !criteria.getNatures().isEmpty()) {
+            predicates.add(root.get("natureOperation").in(criteria.getNatures()));
+        }
+
+        // Statuts
+        if (criteria.getStatuts() != null && !criteria.getStatuts().isEmpty()) {
+            predicates.add(root.get("statut").in(criteria.getStatuts()));
+        }
+
+        // Stations
+        if (criteria.getStations() != null && !criteria.getStations().isEmpty()) {
+            predicates.add(root.get("station").in(criteria.getStations()));
+        }
+
+        // NumFacture
+        if (criteria.getNumeroFacture() != null && !criteria.getNumeroFacture().isEmpty()) {
+            predicates.add(cb.equal(root.get("numeroFacture"), criteria.getNumeroFacture()));
+        }
+
+
+        //datePrelevement
+        if (criteria.getExactDatePrelevement() != null) {
+            predicates.add(cb.equal(root.get("datePrelevement"), criteria.getExactDatePrelevement()));
+        }
+
+        if (criteria.getStartDatePrelevement() != null && criteria.getEndDatePrelevement() != null) {
+            predicates.add(cb.between(
+                    root.get("datePrelevement"),
+                    criteria.getStartDatePrelevement(),
+                    criteria.getEndDatePrelevement()
+            ));
+        }
+
+
+
+        query.select(root).where(cb.and(predicates.toArray(new Predicate[0])));
+        query.orderBy(cb.desc(root.get("idShell")));
+
+        return entityManager.createQuery(query).getResultList();
+
     }
 }
 
