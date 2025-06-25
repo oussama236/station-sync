@@ -131,8 +131,5 @@ public class PrelevementServiceImpl implements IPrelevementService {
         return new PrelevementDetailsResponse(p, utiles);
     }
 
-    @Override
-    public Prelevement assignShellsToPrelevement(Prelevement prelevement) {
-        return null;
-    }
+
 }
