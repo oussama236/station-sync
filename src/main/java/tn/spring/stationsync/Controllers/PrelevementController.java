@@ -2,13 +2,16 @@ package tn.spring.stationsync.Controllers;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tn.spring.stationsync.Dtos.PrelevementDetailsResponse;
 import tn.spring.stationsync.Dtos.PrelevementMatchPreviewRequest;
 import tn.spring.stationsync.Entities.Prelevement;
+import tn.spring.stationsync.Entities.Shell;
 import tn.spring.stationsync.Services.IPrelevementService;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -81,6 +84,15 @@ public class PrelevementController {
     public ResponseEntity<PrelevementDetailsResponse> simulateAutoAssign(@RequestBody PrelevementMatchPreviewRequest request) {
         PrelevementDetailsResponse result = prelevementService.simulateAutoAssignement(request.getMontant(), request.getDateOperation());
         return ResponseEntity.ok(result);
+    }
+
+
+    @GetMapping("/manual-shells")
+    public ResponseEntity<List<Shell>> getShellsForManualAffectation(
+            @RequestParam("dateOperation") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateOperation) {
+
+        List<Shell> shells = prelevementService.getShellsForManualAffectation(dateOperation);
+        return ResponseEntity.ok(shells);
     }
 
 }

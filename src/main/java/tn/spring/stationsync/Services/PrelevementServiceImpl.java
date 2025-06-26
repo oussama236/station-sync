@@ -131,5 +131,14 @@ public class PrelevementServiceImpl implements IPrelevementService {
         return new PrelevementDetailsResponse(p, utiles);
     }
 
+    @Override
+    public List<Shell> getShellsForManualAffectation(LocalDate dateOperation) {
+        return shellRepository.findByStatutAndDatePrelevementBefore(Statut.EN_ATTENTE, dateOperation)
+                .stream()
+                .sorted(Comparator.comparing(Shell::getDatePrelevement)) // du plus ancien au plus récent
+                .collect(Collectors.toList());
+    }
+
+
 
 }

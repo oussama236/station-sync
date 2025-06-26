@@ -3,6 +3,7 @@ package tn.spring.stationsync.Services;
 
 import tn.spring.stationsync.Dtos.PrelevementDetailsResponse;
 import tn.spring.stationsync.Entities.Prelevement;
+import tn.spring.stationsync.Entities.Shell;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -33,6 +34,6 @@ public interface IPrelevementService {
     PrelevementDetailsResponse simulateAutoAssignement(double montant, LocalDate dateOperation);
         // même logique que assignShellsToPrelevement mais sans save
 
-
+    List<Shell> getShellsForManualAffectation(LocalDate dateOperation);
 }
 
