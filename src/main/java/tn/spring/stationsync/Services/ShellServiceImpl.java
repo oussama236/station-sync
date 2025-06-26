@@ -120,6 +120,7 @@ public class ShellServiceImpl implements IShellService {
 
         for (Shell shell : allShells) {
             if (shell.getDatePrelevement() == null) continue;
+            if (shell.getStatut() == Statut.OK) continue;
 
             Statut newStatut = shell.getDatePrelevement().isAfter(today)
                     ? Statut.VIDE
