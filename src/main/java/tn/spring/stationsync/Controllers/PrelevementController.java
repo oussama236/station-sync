@@ -95,4 +95,13 @@ public class PrelevementController {
         return ResponseEntity.ok(shells);
     }
 
+    @GetMapping("/searchPrelevements")
+    public ResponseEntity<List<Prelevement>> searchPrelevements(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Double montant
+    ) {
+        List<Prelevement> result = prelevementService.searchPrelevements(date, montant);
+        return ResponseEntity.ok(result);
+    }
+
 }

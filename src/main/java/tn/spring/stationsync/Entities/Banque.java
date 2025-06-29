@@ -1,7 +1,8 @@
 package tn.spring.stationsync.Entities;
 
 import jakarta.persistence.*;
-import java.util.Date;
+
+import java.time.LocalDate;
 
 @Entity
 public class Banque {
@@ -10,14 +11,20 @@ public class Banque {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer idBanque;
 
-    @Temporal(TemporalType.DATE)
-    private Date dateOperation;
+    @Column(name = "date_operation")
+    private LocalDate dateOperation;
 
     @Column(nullable = false, length = 20)
     private final String numeroCompte = "20";
 
     private String numeroBordereau;
     private Double montant;
+    @Enumerated(EnumType.STRING)
+    private NatureOperationBank natureOperationBank;
+    @Enumerated(EnumType.STRING)
+    private Statut statut;
+    @Enumerated(EnumType.STRING)
+    private Station station;
 
     public Integer getIdBanque() {
         return idBanque;
@@ -27,19 +34,11 @@ public class Banque {
         this.idBanque = idBanque;
     }
 
-    @Enumerated(EnumType.STRING)
-    private NatureOperationBank natureOperationBank;
-
-    @Enumerated(EnumType.STRING)
-    private StatutBank statutBank;
-
-
-
-    public Date getDateOperation() {
+    public LocalDate getDateOperation() {
         return dateOperation;
     }
 
-    public void setDateOperation(Date dateOperation) {
+    public void setDateOperation(LocalDate dateOperation) {
         this.dateOperation = dateOperation;
     }
 
@@ -71,13 +70,21 @@ public class Banque {
         this.natureOperationBank = natureOperationBank;
     }
 
-    public StatutBank getStatutBank() {
-        return statutBank;
+    public Statut getStatut() {
+        return statut;
     }
 
-    public void setStatutBank(StatutBank statutBank) {
-        this.statutBank = statutBank;
+    public void setStatut(Statut statut) {
+        this.statut = statut;
     }
 
-    // Getters and Setters
+    public Station getStation() {
+        return station;
+    }
+
+    public void setStation(Station station) {
+        this.station = station;
+    }
+
+// Getters and Setters
 }

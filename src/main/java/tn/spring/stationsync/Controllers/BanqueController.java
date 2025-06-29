@@ -2,8 +2,11 @@ package tn.spring.stationsync.Controllers;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tn.spring.stationsync.Entities.Banque;
+import tn.spring.stationsync.Entities.Station;
+import tn.spring.stationsync.Entities.Statut;
 import tn.spring.stationsync.Services.IBanqueService;
 
 import java.util.List;
@@ -56,4 +59,16 @@ public class BanqueController {
     }
 
 
+    @PutMapping("/statut/{id}")
+    public void updateBankStatut(@PathVariable Integer id) {
+        banqueService.updateBankStatut(id);
+    }
+
+
+    @GetMapping("/banques/filter")
+    public List<Banque> filterBanques(
+            @RequestParam(required = false) Station station,
+            @RequestParam(required = false) List<Statut> statuts) {
+        return banqueService.getFilteredBanks(station, statuts);
+    }
 }

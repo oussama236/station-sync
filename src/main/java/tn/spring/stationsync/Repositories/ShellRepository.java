@@ -35,6 +35,9 @@ public interface ShellRepository extends JpaRepository<Shell, Integer> {
     );
     List<Shell> findByStatutAndDatePrelevementBefore(Statut statut, LocalDate date);
 
+    List<Shell> findByNatureOperation(NatureOperation natureOperation);
+
+
 }
 
 

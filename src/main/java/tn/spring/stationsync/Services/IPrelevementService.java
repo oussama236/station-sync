@@ -35,5 +35,8 @@ public interface IPrelevementService {
         // même logique que assignShellsToPrelevement mais sans save
 
     List<Shell> getShellsForManualAffectation(LocalDate dateOperation);
+
+    List<Prelevement> searchPrelevements(LocalDate date, Double montant);
+
 }
 

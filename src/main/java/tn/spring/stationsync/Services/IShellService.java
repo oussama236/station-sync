@@ -1,5 +1,6 @@
 package tn.spring.stationsync.Services;
 
+import tn.spring.stationsync.Dtos.MonthlyShellStats;
 import tn.spring.stationsync.Dtos.ShellSearchCriteria;
 import tn.spring.stationsync.Entities.*;
 
@@ -30,4 +31,7 @@ public interface IShellService {
     List<Shell> filterShells(NatureOperation nature, Station station, List<Statut> statuts);
 
     List<Shell> searchShells(ShellSearchCriteria criteria);
+
+    List<MonthlyShellStats> getShellsGroupedByMonth(Optional<String> natureFilter);
+
 }

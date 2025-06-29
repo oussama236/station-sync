@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tn.spring.stationsync.Dtos.MonthlyShellStats;
 import tn.spring.stationsync.Dtos.ShellFilterResponse;
 import tn.spring.stationsync.Dtos.ShellSearchCriteria;
 import tn.spring.stationsync.Entities.NatureOperation;
@@ -15,6 +16,7 @@ import tn.spring.stationsync.Services.IShellService;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/Shell")
@@ -122,6 +124,15 @@ public class ShellController {
     @PostMapping("/advanced-search")
     public List<Shell> searchShells(@RequestBody ShellSearchCriteria criteria) {
         return shellService.searchShells(criteria);
+    }
+
+    @GetMapping("/monthly-stats")
+    public ResponseEntity<List<MonthlyShellStats>> getMonthlyStats(
+            @RequestParam(required = false) String nature) {
+
+        Optional<String> natureFilter = Optional.ofNullable(nature);
+        List<MonthlyShellStats> stats = shellService.getShellsGroupedByMonth(natureFilter);
+        return ResponseEntity.ok(stats);
     }
 
 

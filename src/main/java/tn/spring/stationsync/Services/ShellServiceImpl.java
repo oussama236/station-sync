@@ -7,7 +7,9 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import tn.spring.stationsync.Dtos.MonthlyShellStats;
 import tn.spring.stationsync.Dtos.ShellSearchCriteria;
+import tn.spring.stationsync.Dtos.StatPerNature;
 import tn.spring.stationsync.Entities.NatureOperation;
 import tn.spring.stationsync.Entities.Shell;
 import tn.spring.stationsync.Entities.Station;
@@ -19,8 +21,10 @@ import jakarta.annotation.PostConstruct;
 
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ShellServiceImpl implements IShellService {
@@ -219,6 +223,48 @@ public class ShellServiceImpl implements IShellService {
         return entityManager.createQuery(query).getResultList();
 
     }
+
+    @Override
+    public List<MonthlyShellStats> getShellsGroupedByMonth(Optional<String> natureFilter) {
+        List<Shell> shells = natureFilter.isPresent()
+                ? shellRepository.findByNatureOperation(NatureOperation.valueOf(natureFilter.get())) // ✅ CORRECTION ICI
+                : shellRepository.findAll();
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.FRENCH);
+
+        Map<String, List<Shell>> groupedByMonth = shells.stream()
+                .collect(Collectors.groupingBy(
+                        shell -> shell.getDateOperation().format(formatter)
+                ));
+
+        List<MonthlyShellStats> stats = new ArrayList<>();
+
+        for (Map.Entry<String, List<Shell>> entry : groupedByMonth.entrySet()) {
+            String mois = entry.getKey();
+            List<Shell> shellListForMonth = entry.getValue();
+
+            double totalMontant = shellListForMonth.stream().mapToDouble(Shell::getMontant).sum();
+            int totalCount = shellListForMonth.size();
+
+            Map<String, StatPerNature> details = shellListForMonth.stream()
+                    .collect(Collectors.groupingBy(
+                            shell -> shell.getNatureOperation().toString(), // ✅ on utilise le nom de l'enum en String
+                            Collectors.collectingAndThen(Collectors.toList(), list -> {
+                                int count = list.size();
+                                double montant = list.stream().mapToDouble(Shell::getMontant).sum();
+                                return new StatPerNature(count, montant);
+                            })
+                    ));
+
+            stats.add(new MonthlyShellStats(mois, totalMontant, totalCount, details));
+        }
+
+        return stats;
+    }
+
+
+
+
 }
 
 

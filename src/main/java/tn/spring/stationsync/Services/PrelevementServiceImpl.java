@@ -127,6 +127,7 @@ public class PrelevementServiceImpl implements IPrelevementService {
         Prelevement p = getPrelevement(id);
         List<Shell> utiles = p.getShells().stream()
                 .filter(s -> s.getNatureOperation() != null)
+                .sorted(Comparator.comparing(Shell::getDatePrelevement))
                 .collect(Collectors.toList());
         return new PrelevementDetailsResponse(p, utiles);
     }
@@ -139,6 +140,9 @@ public class PrelevementServiceImpl implements IPrelevementService {
                 .collect(Collectors.toList());
     }
 
+    public List<Prelevement> searchPrelevements(LocalDate date, Double montant) {
+        return prelevementRepository.searchPrelevements(date, montant);
+    }
 
 
 }

@@ -1,6 +1,9 @@
 package tn.spring.stationsync.Services;
 
 import tn.spring.stationsync.Entities.Banque;
+import tn.spring.stationsync.Entities.Station;
+import tn.spring.stationsync.Entities.Statut;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -21,4 +24,9 @@ public interface IBanqueService {
 
     //Update Bank by ID
     Banque updateBanque (Banque  b);
+
+    List<Banque> getFilteredBanks(Station station, List<Statut> statuts);
+
+    void updateBankStatut(Integer bankId);
+
 }
