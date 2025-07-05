@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tn.spring.stationsync.Entities.Banque;
+import tn.spring.stationsync.Entities.Shell;
 import tn.spring.stationsync.Entities.Station;
 import tn.spring.stationsync.Entities.Statut;
 
@@ -21,4 +22,8 @@ public interface BanqueRepository extends JpaRepository<Banque, Integer> {
             @Param("station") Station station,
             @Param("statuts") List<Statut> statuts
     );
+
+    @Query("SELECT b FROM Banque b ORDER BY b.idBanque DESC")
+    List<Banque> findAllOrderedByIdDesc();
+
 }

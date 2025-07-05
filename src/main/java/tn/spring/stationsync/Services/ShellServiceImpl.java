@@ -227,7 +227,7 @@ public class ShellServiceImpl implements IShellService {
     @Override
     public List<MonthlyShellStats> getShellsGroupedByMonth(Optional<String> natureFilter) {
         List<Shell> shells = natureFilter.isPresent()
-                ? shellRepository.findByNatureOperation(NatureOperation.valueOf(natureFilter.get())) // ✅ CORRECTION ICI
+                ? shellRepository.findByNatureOperation(NatureOperation.valueOf(natureFilter.get())) // ✅ filtre appliqué
                 : shellRepository.findAll();
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.FRENCH);
@@ -243,12 +243,23 @@ public class ShellServiceImpl implements IShellService {
             String mois = entry.getKey();
             List<Shell> shellListForMonth = entry.getValue();
 
-            double totalMontant = shellListForMonth.stream().mapToDouble(Shell::getMontant).sum();
+            // ✅ Soustraire les avoirs du total
+            double totalMontant = shellListForMonth.stream()
+                    .mapToDouble(shell -> {
+                        if (shell.getNatureOperation() == NatureOperation.AVOIR) {
+                            return -shell.getMontant(); // ✅ inverser le montant des avoirs
+                        } else {
+                            return shell.getMontant();
+                        }
+                    })
+                    .sum();
+
             int totalCount = shellListForMonth.size();
 
+            // ✅ Garder les montants positifs dans les détails pour le graphique
             Map<String, StatPerNature> details = shellListForMonth.stream()
                     .collect(Collectors.groupingBy(
-                            shell -> shell.getNatureOperation().toString(), // ✅ on utilise le nom de l'enum en String
+                            shell -> shell.getNatureOperation().toString(),
                             Collectors.collectingAndThen(Collectors.toList(), list -> {
                                 int count = list.size();
                                 double montant = list.stream().mapToDouble(Shell::getMontant).sum();
@@ -261,6 +272,7 @@ public class ShellServiceImpl implements IShellService {
 
         return stats;
     }
+
 
 
 

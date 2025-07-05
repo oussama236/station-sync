@@ -5,7 +5,6 @@ import tn.spring.stationsync.Entities.Station;
 import tn.spring.stationsync.Entities.Statut;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface IBanqueService {
 
@@ -28,5 +27,7 @@ public interface IBanqueService {
     List<Banque> getFilteredBanks(Station station, List<Statut> statuts);
 
     void updateBankStatut(Integer bankId);
+
+    // Dans IBanqueService.java
 
 }

@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public  class BanqueServiceImpl implements IBanqueService {
@@ -24,7 +23,7 @@ public  class BanqueServiceImpl implements IBanqueService {
 
     @Override
     public List<Banque> getAllBanks() {
-        return bankRepository.findAll();
+        return bankRepository.findAllOrderedByIdDesc();
     }
 
     @Override

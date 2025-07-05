@@ -2,7 +2,6 @@ package tn.spring.stationsync.Controllers;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tn.spring.stationsync.Entities.Banque;
 import tn.spring.stationsync.Entities.Station;
@@ -29,10 +28,8 @@ public class BanqueController {
 
 
     @GetMapping("/operations")
-    @ResponseBody
-    public List<Banque> getBanks() {
-        List<Banque> listBanks = banqueService.getAllBanks();
-        return listBanks;
+    public List<Banque> getAllOperations() {
+        return banqueService.getAllBanks();
     }
 
 
