@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.RestController;
 import tn.spring.stationsync.Dtos.RegisterRequest;
 import tn.spring.stationsync.Services.IUserService;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping
 public class RegisterController {
@@ -20,12 +23,17 @@ public class RegisterController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<Map<String, String>> register(@RequestBody RegisterRequest request) {
+        Map<String, String> response = new HashMap<>();
+
         try {
             userService.register(request);
-            return ResponseEntity.ok("Utilisateur enregistré avec succès !");
+            response.put("message", "Utilisateur enregistré avec succès !");
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body("Erreur : " + e.getMessage());
+            response.put("error", "Erreur : " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
         }
     }
+
 }
