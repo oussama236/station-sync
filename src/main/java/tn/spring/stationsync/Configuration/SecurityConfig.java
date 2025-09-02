@@ -1,8 +1,10 @@
 package tn.spring.stationsync.Configuration;
 
 import tn.spring.stationsync.Security.JwtRequestFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -17,7 +19,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import jakarta.servlet.http.HttpServletResponse;
+import java.time.Duration;
 import java.util.List;
 
 @Configuration
@@ -33,33 +35,35 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // JWT API => no CSRF cookies
+                // Disable CSRF for APIs
                 .csrf(csrf -> csrf.disable())
 
-                // **STATeless**, do not disable the whole module
+                // Stateless session for JWT
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // CORS (preflight + allowed origins)
+                // Enable CORS support
                 .cors(Customizer.withDefaults())
 
-                // Public endpoints (adjust if your real paths are /auth/**)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/register", "/forgot-password", "/reset-password").permitAll()
-                        // e.g. .requestMatchers("/auth/**").permitAll()
+                        // Allow preflight requests
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Public endpoints (your Angular uses /SS/register & /SS/login)
+                        .requestMatchers("/SS/register", "/SS/login").permitAll()
+
+                        // All other requests require authentication
                         .anyRequest().authenticated()
                 )
 
-                // Proper error codes
+                // Error handling
                 .exceptionHandling(ex -> ex
-                        // Not authenticated or bad/expired token -> 401
                         .authenticationEntryPoint((req, res, e) ->
                                 res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
-                        // Authenticated but forbidden (kept for future) -> 403
                         .accessDeniedHandler((req, res, e) ->
                                 res.sendError(HttpServletResponse.SC_FORBIDDEN))
                 )
 
-                // JWT filter (must run before UsernamePasswordAuthenticationFilter)
+                // Add your JWT filter before the default username/password filter
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -68,13 +72,18 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-                "http://localhost:4200"       // Angular dev
-                // add your production frontend origin here if needed
-        ));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
+
+        // Allow Angular dev origin
+        config.setAllowedOrigins(List.of("http://localhost:4200"));
+
+        // Add production frontend here later if needed
+        // config.setAllowedOrigins(List.of("http://localhost:4200", "https://your-frontend-domain.com"));
+
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        config.setExposedHeaders(List.of("Authorization"));
+        config.setAllowCredentials(true); // only if you actually send cookies/Authorization headers
+        config.setMaxAge(Duration.ofHours(1)); // cache preflight response
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
