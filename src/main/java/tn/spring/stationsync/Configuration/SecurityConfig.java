@@ -49,7 +49,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // Public endpoints (your Angular uses /SS/register & /SS/login)
-                        .requestMatchers("/SS/register", "/SS/login").permitAll()
+                        .requestMatchers("/register", "/login").permitAll()
 
                         // All other requests require authentication
                         .anyRequest().authenticated()
