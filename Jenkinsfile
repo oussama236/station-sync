@@ -58,7 +58,7 @@ pipeline {
           sh """
             docker pull ${IMAGE_NAME}:latest
             docker rm -f stationsync-backend || true
-            docker run -d --name stationsync-backend -p 8080:8080 ${IMAGE_NAME}:latest
+            docker run -d --name stationsync-backend -p 8081:8080 ${IMAGE_NAME}:latest
           """
         }
       }
