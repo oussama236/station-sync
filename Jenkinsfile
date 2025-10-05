@@ -3,7 +3,7 @@ pipeline {
 
   environment {
     REGISTRY_CRED = 'dockerhub'                       // ID des credentials Docker Hub dans Jenkins
-    IMAGE_NAME    = 'oussama236/stationsync-backend'  // ton image sur Docker Hub
+    IMAGE_NAME    = 'oussamamiladi123/stationsync-backend'  // ton image sur Docker Hub
   }
 
   options {
