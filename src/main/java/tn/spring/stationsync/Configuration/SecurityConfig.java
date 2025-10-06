@@ -74,7 +74,11 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         // Allow Angular dev origin
-        config.setAllowedOrigins(List.of("http://localhost:4200"));
+        config.setAllowedOrigins(List.of(
+                "http://192.168.74.128:8089",
+                "http://localhost:8089"
+        ));
+
 
         // Add production frontend here later if needed
         // config.setAllowedOrigins(List.of("http://localhost:4200", "https://your-frontend-domain.com"));
