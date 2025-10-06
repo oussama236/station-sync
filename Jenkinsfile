@@ -2,8 +2,8 @@ pipeline {
   agent any
 
   environment {
-    REGISTRY_CRED = 'dockerhub'                       // ID des credentials Docker Hub dans Jenkins
-    IMAGE_NAME    = 'oussamamiladi123/stationsync-backend'  // ton image sur Docker Hub
+    REGISTRY_CRED = 'dockerhub'
+    IMAGE_NAME    = 'oussamamiladi123/stationsync-backend'
   }
 
   options {
@@ -12,16 +12,12 @@ pipeline {
   }
 
   triggers {
-    // Le webhook GitHub que tu as déjà actif
     githubPush()
   }
 
   stages {
-
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage('Build JAR (Maven)') {
@@ -34,43 +30,42 @@ pipeline {
     stage('Docker Build') {
       steps {
         script {
-          sh """
-            docker build -t ${IMAGE_NAME}:latest .
-          """
+          COMMIT = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+          TAG = COMMIT
         }
+        sh """
+          docker build -t ${IMAGE_NAME}:latest -t ${IMAGE_NAME}:${TAG} .
+        """
       }
     }
 
     stage('Docker Login & Push') {
       steps {
         withCredentials([usernamePassword(credentialsId: env.REGISTRY_CRED, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-          sh '''
+          sh """
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
             docker push ${IMAGE_NAME}:latest
-          '''
+            docker push ${IMAGE_NAME}:${TAG}
+            docker logout
+          """
         }
       }
     }
 
-    stage('Deploy (Local VM)') {
+    stage('Deploy to VM') {
+      when { branch 'main' } // change if your default branch differs
       steps {
-        script {
-          sh """
-            docker pull ${IMAGE_NAME}:latest
-            docker rm -f stationsync-backend || true
-            docker run -d --name stationsync-backend -p 8081:8080 ${IMAGE_NAME}:latest
-          """
-        }
+        sh '''
+          cd /opt/stationsync
+          docker compose pull
+          docker compose up -d
+        '''
       }
     }
   }
 
   post {
-    success {
-      echo "✅ Déploiement réussi : ${IMAGE_NAME}:latest"
-    }
-    failure {
-      echo "❌ Erreur dans le pipeline. Vérifie les logs Jenkins."
-    }
+    success { echo "✅ Backend build, push & compose deploy OK: ${IMAGE_NAME}:latest" }
+    failure { echo "❌ Erreur pipeline backend. Vérifie les logs Jenkins." }
   }
 }
