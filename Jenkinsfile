@@ -27,6 +27,14 @@ pipeline {
       }
     }
 
+    stage('SonarQube Analysis') {
+      steps {
+        withSonarQubeEnv('local-sonarqube') {
+          sh 'mvn -B -DskipTests sonar:sonar -Dsonar.projectKey=stationsync-backend'
+        }
+      }
+    }
+
     stage('Docker Build') {
       steps {
         script {
