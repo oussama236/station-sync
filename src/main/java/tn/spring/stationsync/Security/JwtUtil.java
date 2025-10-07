@@ -2,6 +2,8 @@ package tn.spring.stationsync.Security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -15,8 +17,16 @@ import java.util.function.Function;
 public class JwtUtil {
 
     // Clé secrète d'au moins 256 bits (32 caractères)
-    private final SecretKey SECRET_KEY = Keys.hmacShaKeyFor("secretsecretsecretsecretsecretsecret12".getBytes());
+    @Value("${JWT_SECRET}")
+    private String jwtSecretEnv;   // read from environment
 
+    private SecretKey SECRET_KEY;
+
+    @PostConstruct
+    public void init() {
+        byte[] keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(jwtSecretEnv);
+        SECRET_KEY = io.jsonwebtoken.security.Keys.hmacShaKeyFor(keyBytes);
+    }
     private final long EXPIRATION_TIME = 1000 * 60 * 60 * 10; // 10 heures
 
     // Génère le token JWT
