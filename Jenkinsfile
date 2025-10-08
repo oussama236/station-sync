@@ -24,7 +24,8 @@ pipeline {
     // 1️⃣ Build + Sonar before deploy to Nexus
     stage('Build (Maven)') {
       steps {
-        sh 'mvn -B -DskipTests clean package'
+        sh 'mvn -B -U -DskipTests clean package'
+
       }
     }
 
