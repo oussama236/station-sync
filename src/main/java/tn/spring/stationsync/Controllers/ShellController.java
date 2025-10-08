@@ -14,7 +14,6 @@ import tn.spring.stationsync.Entities.Statut;
 import tn.spring.stationsync.Services.IShellService;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,18 +30,18 @@ public class ShellController {
 
 
     @GetMapping("/shells")
-    @ResponseBody
-    public ResponseEntity<?> getShells() {
+    public ResponseEntity<ShellFilterResponse> getShells() {
         List<Shell> listShells = shellService.getAllShells();
 
         if (listShells.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Aucun Shell disponible.");
+                    .body(null);  // or ResponseEntity.notFound().build()
         }
 
         ShellFilterResponse response = new ShellFilterResponse(listShells);
         return ResponseEntity.ok(response);
     }
+
 
 
 

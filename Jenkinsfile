@@ -16,14 +16,15 @@ pipeline {
   }
 
   stages {
+
     stage('Checkout') {
       steps { checkout scm }
     }
 
-    stage('Build JAR (Maven)') {
+    // 1️⃣ Build + Sonar before deploy to Nexus
+    stage('Build (Maven)') {
       steps {
-        sh 'mvn -q -DskipTests package'
-        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+        sh 'mvn -B -DskipTests clean package'
       }
     }
 
@@ -35,6 +36,34 @@ pipeline {
       }
     }
 
+    // 2️⃣ Deploy artifact to Nexus
+    stage('Deploy JAR to Nexus') {
+      steps {
+        sh 'mvn -B -DskipTests deploy'
+        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+      }
+    }
+
+    // 3️⃣ Fetch JAR from Nexus to build Docker image
+    stage('Fetch JAR from Nexus') {
+      steps {
+        sh '''
+          echo "🧹 Cleaning old JAR..."
+          rm -f app.jar
+
+          echo "⬇️ Downloading artifact from Nexus..."
+          mvn -B dependency:copy \
+            -Dartifact=tn.spring:Station-Sync:0.0.1-SNAPSHOT:jar \
+            -DoutputDirectory=. \
+            -Dtransitive=false
+
+          mv Station-Sync-0.0.1-SNAPSHOT.jar app.jar
+          ls -lh app.jar
+        '''
+      }
+    }
+
+    // 4️⃣ Docker build, push, deploy to VM
     stage('Docker Build') {
       steps {
         script {
@@ -76,11 +105,10 @@ pipeline {
         '''
       }
     }
-
   }
 
   post {
-    success { echo "✅ Backend build, push & compose deploy OK: ${IMAGE_NAME}:latest" }
-    failure { echo "❌ Erreur pipeline backend. Vérifie les logs Jenkins." }
+    success { echo "✅ Backend pipeline OK — SonarQube + Nexus + Docker deploy successful!" }
+    failure { echo "❌ Pipeline failed. Check Jenkins logs for errors." }
   }
 }

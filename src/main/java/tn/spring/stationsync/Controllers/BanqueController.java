@@ -20,7 +20,7 @@ public class BanqueController {
 
 
     @PostMapping("/addOperation")
-    @ResponseBody
+
     public  Banque saveBank(@RequestBody Banque bank){
         Banque banque = banqueService.saveBank(bank);
         return banque;

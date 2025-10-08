@@ -96,7 +96,7 @@
 
     </dependencies>
 
-    <!-- Garantit la présence du repo Maven Central -->
+    <!-- Keep central; downloads will still go via the Nexus mirror from settings.xml -->
     <repositories>
         <repository>
             <id>central</id>
@@ -105,11 +105,30 @@
         </repository>
     </repositories>
 
+    <!-- Tell Maven where to DEPLOY artifacts (Nexus) -->
+    <distributionManagement>
+        <repository>
+            <id>nexus-releases</id>
+            <url>http://127.0.0.1:8085/repository/maven-releases-local/</url>
+        </repository>
+        <snapshotRepository>
+            <id>nexus-snapshots</id>
+            <url>http://127.0.0.1:8085/repository/maven-snapshots-local/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <build>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- Ensure deploy goal is available/modern -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>3.1.1</version>
             </plugin>
         </plugins>
     </build>

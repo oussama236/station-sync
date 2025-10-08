@@ -81,7 +81,7 @@ public class SecurityConfig {
 
 
         // Add production frontend here later if needed
-        // config.setAllowedOrigins(List.of("http://localhost:4200", "https://your-frontend-domain.com"));
+
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
