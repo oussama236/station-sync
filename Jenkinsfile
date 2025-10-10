@@ -91,7 +91,6 @@ pipeline {
     }
 
     stage('Deploy to VM') {
-      when { branch 'main' }
       steps {
         sh '''
           cd /opt/stationsync

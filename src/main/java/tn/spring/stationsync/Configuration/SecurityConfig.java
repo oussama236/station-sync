@@ -35,39 +35,34 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Disable CSRF for APIs
                 .csrf(csrf -> csrf.disable())
-
-                // Stateless session for JWT
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // Enable CORS support
                 .cors(Customizer.withDefaults())
-
                 .authorizeHttpRequests(auth -> auth
-                        // Allow preflight requests
+                        // Allow preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Public endpoints (your Angular uses /SS/register & /SS/login)
-                        .requestMatchers("/register", "/login").permitAll()
+                        // 🔓 Actuator for Prometheus (health/info/prometheus)
+                        .requestMatchers(
+                                "/actuator/health", "/actuator/info", "/actuator/prometheus",
+                                "/SS/actuator/health", "/SS/actuator/info", "/SS/actuator/prometheus"
+                        ).permitAll()
 
-                        // All other requests require authentication
+                        // Public auth endpoints
+                        .requestMatchers("/register", "/login", "/SS/register", "/SS/login").permitAll()
+
+                        // Everything else secured
                         .anyRequest().authenticated()
                 )
-
-                // Error handling
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((req, res, e) ->
-                                res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
-                        .accessDeniedHandler((req, res, e) ->
-                                res.sendError(HttpServletResponse.SC_FORBIDDEN))
+                        .authenticationEntryPoint((req, res, e) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+                        .accessDeniedHandler((req, res, e) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))
                 )
-
-                // Add your JWT filter before the default username/password filter
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
