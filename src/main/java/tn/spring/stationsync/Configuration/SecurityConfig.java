@@ -63,31 +63,30 @@ public class SecurityConfig {
         return http.build();
     }
 
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allow Angular dev origin
-        config.setAllowedOrigins(List.of(
-                "http://192.168.74.128:8089",
-                "http://localhost:8089"
+        // ✅ Allow Angular dev + your containerized frontend
+        // Use Origin *patterns* (works with credentials + ports)
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:4200",
+                "http://127.0.0.1:4200",
+                "http://localhost:8089",
+                "http://192.168.74.128:8089"
         ));
-
-
-        // Add production frontend here later if needed
-
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
         config.setExposedHeaders(List.of("Authorization"));
-        config.setAllowCredentials(true); // only if you actually send cookies/Authorization headers
-        config.setMaxAge(Duration.ofHours(1)); // cache preflight response
+        config.setAllowCredentials(true);                  // keep if you send cookies/Authorization
+        config.setMaxAge(Duration.ofHours(1));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }
+
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
