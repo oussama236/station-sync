@@ -65,7 +65,10 @@ public class BanqueController {
     @GetMapping("/banques/filter")
     public List<Banque> filterBanques(
             @RequestParam(required = false) Station station,
-            @RequestParam(required = false) List<Statut> statuts) {
+            @RequestParam(required = false) Statut statut
+    ) {
+        List<Statut> statuts = (statut != null) ? List.of(statut) : null;
         return banqueService.getFilteredBanks(station, statuts);
     }
+
 }

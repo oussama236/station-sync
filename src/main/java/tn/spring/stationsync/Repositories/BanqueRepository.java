@@ -14,10 +14,10 @@ import java.util.List;
 @Repository
 public interface BanqueRepository extends JpaRepository<Banque, Integer> {
 
-    @Query("SELECT b FROM Banque b WHERE " +
-            "(:station IS NULL OR b.station = :station) AND " +
-            "(:#{#statuts == null || #statuts.isEmpty()} = true OR b.statut IN :statuts) " +
-            "ORDER BY b.idBanque DESC")
+    @Query("SELECT b FROM Banque b WHERE "
+            + "(:station IS NULL OR b.station = :station) AND "
+            + "(:#{#statuts == null || #statuts.isEmpty()} OR b.statut IN :statuts) "
+            + "ORDER BY b.idBanque DESC")
     List<Banque> findByFilters(
             @Param("station") Station station,
             @Param("statuts") List<Statut> statuts

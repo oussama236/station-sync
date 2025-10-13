@@ -43,10 +43,10 @@ public  class BanqueServiceImpl implements IBanqueService {
         return b;
     }
 
-    @Override
     public List<Banque> getFilteredBanks(Station station, List<Statut> statuts) {
         return bankRepository.findByFilters(station, statuts);
     }
+
 
     @Override
     public void updateBankStatut(Integer bankId) {
