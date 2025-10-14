@@ -1,5 +1,6 @@
 package tn.spring.stationsync.Configuration;
 
+import org.springframework.context.annotation.Profile;
 import tn.spring.stationsync.Security.JwtRequestFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
@@ -22,6 +23,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.time.Duration;
 import java.util.List;
 
+@Profile("!local")
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
