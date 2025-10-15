@@ -21,7 +21,6 @@ import jakarta.annotation.PostConstruct;
 
 
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -34,6 +33,9 @@ public class ShellServiceImpl implements IShellService {
 
     @Autowired
     private ShellRepository shellRepository;
+
+    @Autowired
+    private NotificationService notificationService;
 
 
     @Override
@@ -105,7 +107,13 @@ public class ShellServiceImpl implements IShellService {
         }
 
         // 💾 Enregistrement
-        return shellRepository.save(existingShell);
+        Shell saved = shellRepository.save(existingShell);
+
+        // Auto-resolve when status becomes OK
+        if (saved.getStatut() == Statut.OK) {
+            notificationService.resolveByRef(tn.spring.stationsync.Entities.NotificationType.SHELL, saved.getIdShell());
+        }
+        return saved;
     }
 
 

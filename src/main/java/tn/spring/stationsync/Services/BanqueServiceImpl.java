@@ -15,6 +15,9 @@ public  class BanqueServiceImpl implements IBanqueService {
     @Autowired
     private BanqueRepository bankRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private NotificationService notificationService;
+
     @Override
     public Banque saveBank(Banque bank) {
         bank.setStatut(Statut.VIDE); // Toujours initialisé à VIDE
@@ -39,8 +42,11 @@ public  class BanqueServiceImpl implements IBanqueService {
 
     @Override
     public Banque updateBanque(Banque b) {
-        bankRepository.save(b);
-        return b;
+        Banque saved = bankRepository.save(b);
+        if (saved.getStatut() == Statut.OK) {
+            notificationService.resolveByRef(tn.spring.stationsync.Entities.NotificationType.BANQUE, saved.getIdBanque());
+        }
+        return saved;
     }
 
     public List<Banque> getFilteredBanks(Station station, List<Statut> statuts) {
@@ -56,6 +62,7 @@ public  class BanqueServiceImpl implements IBanqueService {
         // On force toujours le statut à OK
         bank.setStatut(Statut.OK);
         bankRepository.save(bank);
+        notificationService.resolveByRef(tn.spring.stationsync.Entities.NotificationType.BANQUE, bank.getIdBanque());
     }
 
 }

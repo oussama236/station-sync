@@ -1,0 +1,43 @@
+{
+
+    "version": "0.2.0",
+    "configurations": [
+
+
+
+
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        },
+        {
+            "type": "java",
+            "name": "StationSyncApplication",
+            "request": "launch",
+            "mainClass": "tn.spring.stationsync.StationSyncApplication",
+            "projectName": "Station-Sync"
+        },
+        {
+            "type": "java",
+            "name": "StationSync (local profile)",
+            "request": "launch",
+            "mainClass": "tn.spring.stationsync.StationSyncApplication",
+            "projectName": "Station-Sync",
+            "args": "--spring.profiles.active=local"
+        },
+        {
+            "type": "java",
+            "name": "StationSync JAR (local profile)",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "java",
+            "args": [
+                "-jar",
+                "${workspaceFolder}/target/Station-Sync-0.0.1-SNAPSHOT.jar",
+                "--spring.profiles.active=local"
+            ]
+        }
+    ]
+}

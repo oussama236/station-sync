@@ -4,7 +4,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tn.spring.stationsync.Entities.Banque;
-import tn.spring.stationsync.Entities.Shell;
 import tn.spring.stationsync.Entities.Station;
 import tn.spring.stationsync.Entities.Statut;
 
@@ -26,5 +25,7 @@ ORDER BY b.idBanque DESC
 
     @Query("SELECT b FROM Banque b ORDER BY b.idBanque DESC")
     List<Banque> findAllOrderedByIdDesc();
+
+    List<Banque> findByStatutAndDateOperationLessThanEqual(Statut statut, java.time.LocalDate date);
 
 }

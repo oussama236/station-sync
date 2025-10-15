@@ -23,6 +23,9 @@ public class PrelevementServiceImpl implements IPrelevementService {
     @Autowired
     private ShellRepository shellRepository;
 
+    @Autowired
+    private NotificationService notificationService;
+
     @Override
     public Prelevement savePrelevement(Prelevement prelevement) {
         return prelevementRepository.save(prelevement);
@@ -49,6 +52,7 @@ public class PrelevementServiceImpl implements IPrelevementService {
         return new PrelevementDetailsResponse(virtuel, solution);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public PrelevementDetailsResponse assignShellsManually(Integer prelevementId, List<Integer> shellIds) {
         Prelevement prelevement = prelevementRepository.findById(prelevementId)
                 .orElseThrow(() -> new RuntimeException("Prélèvement non trouvé"));
@@ -64,6 +68,11 @@ public class PrelevementServiceImpl implements IPrelevementService {
         shellRepository.saveAll(shells);
         prelevement.setShells(shells);
         prelevementRepository.save(prelevement);
+
+        // auto-resolve notifications for affected shells
+        for (Shell s : shells) {
+            notificationService.resolveByRef(tn.spring.stationsync.Entities.NotificationType.SHELL, s.getIdShell());
+        }
 
         return new PrelevementDetailsResponse(prelevement, shells);
     }
