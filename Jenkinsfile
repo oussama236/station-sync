@@ -80,19 +80,16 @@ pipeline {
           set -e
           cd /opt/stationsync
 
-          # pin this deploy to the freshly built immutable tag
-          sed -i '/^BACKEND_IMAGE=/d' .env || true
-          echo 'BACKEND_IMAGE=${IMAGE_NAME}:${TAG}' >> .env
-          cat .env | tail -n +1
-
-          docker compose pull backend
-          docker compose up -d --no-deps --force-recreate --pull always backend
+          # Use the freshly built tag WITHOUT touching .env
+          BACKEND_IMAGE=${IMAGE_NAME}:${TAG} docker compose pull backend
+          BACKEND_IMAGE=${IMAGE_NAME}:${TAG} docker compose up -d --no-deps --force-recreate --pull always backend
 
           echo '--- Running image ---'
           docker inspect -f '{{.Config.Image}}' stationsync-backend
         """
       }
     }
+
   }
 
   post {
