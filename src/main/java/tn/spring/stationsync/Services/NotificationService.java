@@ -15,6 +15,9 @@ public interface NotificationService {
     void markRead(Long id);
 
     void resolveByRef(NotificationType type, Integer refId);
+
+    long count(NotificationStatus status);
+
 }
 
 

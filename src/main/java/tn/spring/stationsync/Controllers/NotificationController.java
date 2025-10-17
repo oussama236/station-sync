@@ -45,6 +45,13 @@ public class NotificationController {
         overdueNotificationService.generateOverdueNotifications();
         return ResponseEntity.ok().build();
     }
+
+    // ✅ Unread/any status count for the bell
+    @GetMapping("/count")
+    public long count(@RequestParam(required = false) NotificationStatus status) {
+        return notificationService.count(status); // implement in service/repo
+    }
+
 }
 
 

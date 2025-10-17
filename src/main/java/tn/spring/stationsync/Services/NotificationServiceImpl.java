@@ -75,6 +75,15 @@ public class NotificationServiceImpl implements NotificationService {
             log.info("Resolved {} notifications for {}:{}", notifications.size(), type, refId);
         }
     }
+
+    @Override
+    public long count(NotificationStatus status) {
+        if (status != null) {
+            return notificationRepository.countByStatus(status);
+        }
+        return notificationRepository.count();
+    }
+
 }
 
 
