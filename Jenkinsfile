@@ -11,69 +11,52 @@ pipeline {
     buildDiscarder(logRotator(numToKeepStr: '5'))
   }
 
-  triggers {
-    githubPush()
-  }
+  triggers { githubPush() }
 
   stages {
+    stage('Checkout') { steps { checkout scm } }
 
-    stage('Checkout') {
-      steps { checkout scm }
-    }
-
-    // 1️⃣ Build + Sonar before deploy to Nexus
     stage('Build (Maven)') {
-      steps {
-        sh 'mvn -B -U -DskipTests clean package'
-
-      }
+      steps { sh 'set -e; mvn -B -U -DskipTests clean package' }
     }
 
     stage('SonarQube Analysis') {
       steps {
         withSonarQubeEnv('local-sonarqube') {
-          sh 'mvn -B -DskipTests sonar:sonar -Dsonar.projectKey=stationsync-backend'
+          sh 'set -e; mvn -B -DskipTests sonar:sonar -Dsonar.projectKey=stationsync-backend'
         }
       }
     }
 
-    // 2️⃣ Deploy artifact to Nexus
     stage('Deploy JAR to Nexus') {
       steps {
-        sh 'mvn -B -DskipTests deploy'
+        sh 'set -e; mvn -B -DskipTests deploy'
         archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
       }
     }
 
-    // 3️⃣ Fetch JAR from Nexus to build Docker image
     stage('Fetch JAR from Nexus') {
       steps {
         sh '''
-          echo "🧹 Cleaning old JAR..."
+          set -e
           rm -f app.jar
-
-          echo "⬇️ Downloading artifact from Nexus..."
           mvn -B dependency:copy \
             -Dartifact=tn.spring:Station-Sync:0.0.1-SNAPSHOT:jar \
             -DoutputDirectory=. \
             -Dtransitive=false
-
           mv Station-Sync-0.0.1-SNAPSHOT.jar app.jar
           ls -lh app.jar
         '''
       }
     }
 
-    // 4️⃣ Docker build, push, deploy to VM
-    stage('Docker Build') {
+    stage('Docker Build & Tag') {
       steps {
         script {
           COMMIT = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
           TAG = COMMIT
         }
-        sh """
-          docker build -t ${IMAGE_NAME}:latest -t ${IMAGE_NAME}:${TAG} .
-        """
+        sh "set -e; docker build -t ${IMAGE_NAME}:latest -t ${IMAGE_NAME}:${TAG} ."
       }
     }
 
@@ -81,9 +64,10 @@ pipeline {
       steps {
         withCredentials([usernamePassword(credentialsId: env.REGISTRY_CRED, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
           sh """
+            set -e
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-            docker push ${IMAGE_NAME}:latest
             docker push ${IMAGE_NAME}:${TAG}
+            docker push ${IMAGE_NAME}:latest
             docker logout
           """
         }
@@ -92,23 +76,27 @@ pipeline {
 
     stage('Deploy to VM') {
       steps {
-        sh '''
+        sh """
+          set -e
           cd /opt/stationsync
-          echo "🧹 Cleaning old backend container (if exists)..."
-          docker compose down backend || true
 
-          echo "⬇️ Pulling latest backend image..."
+          # pin this deploy to the freshly built immutable tag
+          sed -i '/^BACKEND_IMAGE=/d' .env || true
+          echo 'BACKEND_IMAGE=${IMAGE_NAME}:${TAG}' >> .env
+          cat .env | tail -n +1
+
           docker compose pull backend
+          docker compose up -d --no-deps --force-recreate --pull always backend
 
-          echo "🚀 Starting new backend container..."
-          docker compose up -d backend
-        '''
+          echo '--- Running image ---'
+          docker inspect -f '{{.Config.Image}}' stationsync-backend
+        """
       }
     }
   }
 
   post {
-    success { echo "✅ Backend pipeline OK — SonarQube + Nexus + Docker deploy successful!" }
-    failure { echo "❌ Pipeline failed. Check Jenkins logs for errors." }
+    success { echo "✅ Backend pipeline OK — deployed ${IMAGE_NAME}:${TAG}" }
+    failure { echo "❌ Backend pipeline failed. Check logs." }
   }
 }
