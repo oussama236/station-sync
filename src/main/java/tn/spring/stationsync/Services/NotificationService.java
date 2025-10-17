@@ -18,6 +18,10 @@ public interface NotificationService {
 
     long count(NotificationStatus status);
 
+    // NotificationService.java
+    Page<Notification> listByStatuses(java.util.List<NotificationStatus> statuses,
+                                      org.springframework.data.domain.Pageable pageable);
+
 }
 
 

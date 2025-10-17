@@ -23,7 +23,7 @@ public class NotificationController {
     @GetMapping
     public Page<Notification> list(@RequestParam(required = false) NotificationStatus status,
                                    @RequestParam(defaultValue = "0") int page,
-                                   @RequestParam(defaultValue = "20") int size) {
+                                   @RequestParam(defaultValue = "1000") int size) {
         return notificationService.list(status, PageRequest.of(page, size));
     }
 
@@ -50,6 +50,15 @@ public class NotificationController {
     @GetMapping("/count")
     public long count(@RequestParam(required = false) NotificationStatus status) {
         return notificationService.count(status); // implement in service/repo
+    }
+
+
+    // NotificationController.java
+    @GetMapping("/dropdown")
+    public java.util.List<Notification> dropdown(@RequestParam(defaultValue = "1000") int size) {
+        var statuses = java.util.List.of(NotificationStatus.OPEN, NotificationStatus.READ);
+        var pageable = org.springframework.data.domain.PageRequest.of(0, Math.min(size, 1000));
+        return notificationService.listByStatuses(statuses, pageable).getContent();
     }
 
 }

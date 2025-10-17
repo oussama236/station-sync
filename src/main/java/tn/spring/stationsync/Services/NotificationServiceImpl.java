@@ -84,6 +84,13 @@ public class NotificationServiceImpl implements NotificationService {
         return notificationRepository.count();
     }
 
+    // NotificationServiceImpl.java
+    @Override
+    public Page<Notification> listByStatuses(java.util.List<NotificationStatus> statuses,
+                                             org.springframework.data.domain.Pageable pageable) {
+        return notificationRepository.findByStatusInOrderByCreatedAtDesc(statuses, pageable);
+    }
+
 }
 
 
