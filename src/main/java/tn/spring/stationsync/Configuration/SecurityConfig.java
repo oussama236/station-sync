@@ -49,7 +49,11 @@ public class SecurityConfig {
                                 "/actuator/health", "/actuator/info", "/actuator/prometheus",
                                 "/SS/actuator/health", "/SS/actuator/info", "/SS/actuator/prometheus"
                         ).permitAll()
-
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/api/bank-statement").permitAll()
+                        .requestMatchers("/Shell/**").permitAll()
+                        .requestMatchers("/Banque/**").permitAll()
+                        .requestMatchers("/Prelevement/**").permitAll()
                         // Public auth endpoints
                         .requestMatchers("/register", "/login", "/SS/register", "/SS/login").permitAll()
 

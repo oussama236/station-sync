@@ -23,6 +23,7 @@ public class LocalOpenSecurityConfig {
                 .requestMatchers("/api/bank-statement").permitAll()
                 .requestMatchers("/Shell/**").permitAll()
                 .requestMatchers("/Banque/**").permitAll()
+                .requestMatchers("/Prelevement/**").permitAll()
 
                 // Open all notifications endpoints
                 .requestMatchers("/notifications/**").permitAll()

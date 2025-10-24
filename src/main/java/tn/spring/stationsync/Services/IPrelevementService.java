@@ -1,6 +1,5 @@
 package tn.spring.stationsync.Services;
 
-
 import tn.spring.stationsync.Dtos.PrelevementDetailsResponse;
 import tn.spring.stationsync.Entities.Prelevement;
 import tn.spring.stationsync.Entities.Shell;
@@ -12,31 +11,27 @@ public interface IPrelevementService {
 
     Prelevement savePrelevement(Prelevement prelevement);
 
-    // Retrieve all Prelevements
     List<Prelevement> getAllPrelevements();
 
-    // Find a Prelevement by ID
-    Prelevement getPrelevement (Integer idPrelevement);
+    Prelevement getPrelevement(Integer idPrelevement);
 
-
-    // Delete a Prelevement by ID
     void deletePrelevement(Integer idPrelevement);
 
-    //Update Prelevement by ID
-    Prelevement updatePrelevement (Prelevement  p);
+    Prelevement updatePrelevement(Prelevement p);
 
     PrelevementDetailsResponse getPrelevementAvecResume(Integer id);
-
-
 
     PrelevementDetailsResponse assignShellsManually(Integer prelevementId, List<Integer> shellIds);
 
     PrelevementDetailsResponse simulateAutoAssignement(double montant, LocalDate dateOperation);
-        // même logique que assignShellsToPrelevement mais sans save
 
     List<Shell> getShellsForManualAffectation(LocalDate dateOperation);
 
     List<Prelevement> searchPrelevements(LocalDate date, Double montant);
 
-}
+    /** 🔹 NEW: Auto-assign shells when editing a Prelevement */
+    PrelevementDetailsResponse autoAssign(Integer prelevementId);
 
+    /** 🔹 NEW: Return candidates (EN_ATTENTE ∪ already linked) for edit modal */
+    List<Shell> getCandidatesForEdit(Integer prelevementId);
+}
