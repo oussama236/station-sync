@@ -50,10 +50,6 @@ public class SecurityConfig {
                                 "/SS/actuator/health", "/SS/actuator/info", "/SS/actuator/prometheus"
                         ).permitAll()
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/api/bank-statement").permitAll()
-                        .requestMatchers("/Shell/**").permitAll()
-                        .requestMatchers("/Banque/**").permitAll()
-                        .requestMatchers("/Prelevement/**").permitAll()
                         // Public auth endpoints
                         .requestMatchers("/register", "/login", "/SS/register", "/SS/login").permitAll()
 
@@ -73,8 +69,6 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // ✅ Allow Angular dev + your containerized frontend
-        // Use Origin *patterns* (works with credentials + ports)
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:4200",
                 "http://127.0.0.1:4200",
@@ -83,15 +77,24 @@ public class SecurityConfig {
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+
+        // 👇 ici la correction
+        config.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                "ngrok-skip-browser-warning"   // 👈 c’était ça qui manquait
+        ));
+
         config.setExposedHeaders(List.of("Authorization"));
-        config.setAllowCredentials(true);                  // keep if you send cookies/Authorization
+        config.setAllowCredentials(true);
         config.setMaxAge(Duration.ofHours(1));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }
+
 
 
     @Bean
