@@ -24,6 +24,8 @@ public class LocalOpenSecurityConfig {
                 .requestMatchers("/Shell/**").permitAll()
                 .requestMatchers("/Banque/**").permitAll()
                 .requestMatchers("/Prelevement/**").permitAll()
+                .requestMatchers("/api/ai/**").permitAll()
+
 
                 // Open all notifications endpoints
                 .requestMatchers("/notifications/**").permitAll()
