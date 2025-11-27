@@ -38,14 +38,14 @@ public class OverdueNotificationServiceImpl implements OverdueNotificationServic
         List<Shell> shells = shellRepository.findByStatutAndDatePrelevementLessThanEqual(Statut.EN_ATTENTE, cutoff);
         for (Shell s : shells) {
             String key = "SHELL:" + s.getIdShell() + ":EN_ATTENTE_5D";
-            String msg = "Shell " + s.getIdShell() + " EN_ATTENTE for 5+ days (since " + s.getDatePrelevement() + ")";
+            String msg = "Facture " +  " EN_ATTENTE pour plus de 5 jour (depuis " + s.getDatePrelevement() + ")";
             notificationService.createIfAbsent(NotificationType.SHELL, s.getIdShell(), key, msg);
         }
 
         List<Banque> banques = banqueRepository.findByStatutAndDateOperationLessThanEqual(Statut.VIDE, cutoff);
         for (Banque b : banques) {
             String key = "BANQUE:" + b.getIdBanque() + ":VIDE_5D";
-            String msg = "Banque op " + b.getIdBanque() + " VIDE for 5+ days (since " + b.getDateOperation() + ")";
+            String msg = "Operation Banciare " + " VIDE pour plus de 5 jour (depuis " + b.getDateOperation() + ")";
             notificationService.createIfAbsent(NotificationType.BANQUE, b.getIdBanque(), key, msg);
         }
 
