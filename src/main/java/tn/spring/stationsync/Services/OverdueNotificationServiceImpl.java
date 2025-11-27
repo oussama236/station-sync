@@ -9,6 +9,7 @@ import tn.spring.stationsync.Repositories.BanqueRepository;
 import tn.spring.stationsync.Repositories.ShellRepository;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -34,21 +35,24 @@ public class OverdueNotificationServiceImpl implements OverdueNotificationServic
         shellService.updateStatutsWhenPrelevementDue();
 
         LocalDate cutoff = LocalDate.now().minusDays(5);
-
+        List<Notification> notifications = new ArrayList<>();
         List<Shell> shells = shellRepository.findByStatutAndDatePrelevementLessThanEqual(Statut.EN_ATTENTE, cutoff);
         for (Shell s : shells) {
             String key = "SHELL:" + s.getIdShell() + ":EN_ATTENTE_5D";
-            String msg = "Facture " +  " EN_ATTENTE pour plus de 5 jour (depuis " + s.getDatePrelevement() + ")";
-            notificationService.createIfAbsent(NotificationType.SHELL, s.getIdShell(), key, msg);
+            String msg = "Facture " + s.getIdShell() + " EN_ATTENTE for 5 jours (depuis " + s.getDatePrelevement() + ")";
+            notifications.add(notificationService.createIfAbsent(NotificationType.SHELL, s.getIdShell(), key, msg));
         }
 
         List<Banque> banques = banqueRepository.findByStatutAndDateOperationLessThanEqual(Statut.VIDE, cutoff);
         for (Banque b : banques) {
             String key = "BANQUE:" + b.getIdBanque() + ":VIDE_5D";
-            String msg = "Operation Banciare " + " VIDE pour plus de 5 jour (depuis " + b.getDateOperation() + ")";
+            String msg = "Banque op " + b.getIdBanque() + " VIDE for 5+ days (since " + b.getDateOperation() + ")";
             notificationService.createIfAbsent(NotificationType.BANQUE, b.getIdBanque(), key, msg);
         }
 
+        notifications.forEach((notif -> {
+            log.info("notif" + notif.getMessage());
+        }));
         log.info("On-demand overdue notification refresh: shells={}, banques={}", shells.size(), banques.size());
     }
 }
