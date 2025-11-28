@@ -14,7 +14,16 @@ pipeline {
   triggers { githubPush() }
 
   stages {
-    stage('Checkout') { steps { checkout scm } }
+
+    stage('Checkout') {
+      steps { checkout scm }
+    }
+
+    stage('Tests (Maven)') {
+      steps {
+        sh 'set -e; mvn -B test'
+      }
+    }
 
     stage('Build (Maven)') {
       steps { sh 'set -e; mvn -B -U -DskipTests clean package' }
