@@ -9,12 +9,10 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
-import tn.spring.stationsync.Dtos.QueryPlan;  // <-- IMPORTANT
-
 @Service
 public class OpenRouterAiClient {
 
-    // 🔹 Nouveau prompt pour NL → SQL
+    // 🔹 Prompt spécialisé pour NL → SQL
     private static final String SQL_SYSTEM_PROMPT = """
 You are StationSync's SQL generator.
 
@@ -66,48 +64,6 @@ Output:
 - Do NOT return JSON.
 """;
 
-
-
-    private static final String SYSTEM_PROMPT = """
-You are StationSync's AI query planner.
-
-Your job:
-- Read the user's question (in French).
-- Decide which table to query: "shell", "banque" or "prelevement".
-- Build a JSON object describing a safe search plan.
-
-You MUST answer ONLY with a single JSON object, no markdown, no backticks, no natural language.
-
-JSON schema:
-{
-  "targetTable": "shell | banque | prelevement",
-  "operation": "SEARCH" | "NONE",
-  "filters": [
-    {
-      "field": "string",
-      "operator": "string (=, >, <, BETWEEN)",
-      "value": "string",
-      "valueTo": "string or null"
-    }
-  ],
-  "limit": 100
-}
-
-Rules:
-- Use only allowed tables: shell, banque, prelevement.
-- Use field names that exist in these tables (e.g. station, dateOperation, natureOperation, statut, montant, natureOperationBank).
-- If the question is unclear or cannot be mapped, respond with:
-  {
-    "targetTable": "shell",
-    "operation": "NONE",
-    "filters": [],
-    "limit": 0
-  }
-- Do NOT write SQL.
-- Do NOT write explanations or natural language.
-- Only return a single JSON object.
-""";
-
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -127,111 +83,6 @@ Rules:
         this.model = model;
     }
 
-    /**
-     * Phase 1 style: returns raw text (here: JSON string now).
-     */
-    public String ask(String userMessage, String contextTable) {
-
-        // 1) messages list (system + user)
-        List<Map<String, String>> messages = new ArrayList<>();
-
-        // System message: rôle de l'IA + format JSON imposé
-        messages.add(Map.of(
-                "role", "system",
-                "content", SYSTEM_PROMPT
-        ));
-
-        // User message: question + contexte table
-        String userContent = "User question (French): " + userMessage +
-                "\nContext table: " + (contextTable == null ? "none" : contextTable);
-
-        messages.add(Map.of(
-                "role", "user",
-                "content", userContent
-        ));
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("model", model);
-        body.put("messages", messages);
-
-        // 2) headers
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(apiKey); // Authorization: Bearer <key>
-
-        // optional but recommended by OpenRouter
-        headers.add("HTTP-Referer", "https://stationsync.local"); // remplacera par ton URL Render plus tard
-        headers.add("X-Title", "StationSync");
-
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-
-        // 3) call OpenRouter
-        ResponseEntity<JsonNode> response = restTemplate.exchange(
-                apiUrl,
-                HttpMethod.POST,
-                entity,
-                JsonNode.class
-        );
-
-        // 4) extract assistant message
-        JsonNode root = response.getBody();
-        System.out.println("=== OpenRouter raw response ===");
-        System.out.println(root);
-
-        if (root == null
-                || !root.has("choices")
-                || !root.get("choices").isArray()
-                || root.get("choices").isEmpty()) {
-            return "Je n'ai pas pu obtenir de réponse de l'IA.";
-        }
-
-        JsonNode firstChoice = root.get("choices").get(0);
-        JsonNode messageNode = firstChoice.get("message");
-
-        if (messageNode == null || !messageNode.has("content")) {
-            return "Réponse IA invalide.";
-        }
-
-        // Ici, content DOIT être un JSON (string) selon le SYSTEM_PROMPT
-        return messageNode.get("content").asText();
-    }
-
-    /**
-     * Phase 2: returns a parsed QueryPlan object.
-     */
-    public QueryPlan askPlan(String userMessage, String contextTable) {
-        String raw = ask(userMessage, contextTable); // JSON en texte, avec \n, espaces, etc.
-
-        if (raw == null) {
-            return buildFallbackPlan();
-        }
-
-        try {
-            // Nettoyer : enlever espaces avant/après, attraper le premier '{' au cas où
-            String cleaned = raw.trim();
-            int firstBrace = cleaned.indexOf('{');
-            if (firstBrace > 0) {
-                cleaned = cleaned.substring(firstBrace);
-            }
-
-            // Parser le JSON -> QueryPlan
-            QueryPlan plan = objectMapper.readValue(cleaned, QueryPlan.class);
-            return plan;
-        } catch (Exception e) {
-            System.out.println("Erreur de parsing QueryPlan: " + e.getMessage());
-            System.out.println("Contenu brut reçu: " + raw);
-            return buildFallbackPlan();
-        }
-    }
-
-    private QueryPlan buildFallbackPlan() {
-        QueryPlan fallback = new QueryPlan();
-        fallback.setTargetTable("shell");
-        fallback.setOperation("NONE");
-        fallback.setFilters(Collections.emptyList());
-        fallback.setLimit(0);
-        return fallback;
-    }
     /**
      * NL → SQL : génère une requête SELECT à partir d'une question en français.
      */
@@ -280,7 +131,7 @@ Rules:
                 || !root.has("choices")
                 || !root.get("choices").isArray()
                 || root.get("choices").isEmpty()) {
-            return "SELECT 1;"; // fallback
+            return "SELECT 1;";
         }
 
         JsonNode firstChoice = root.get("choices").get(0);
@@ -296,7 +147,7 @@ Rules:
     }
 
     /**
-     * Phase 3 : Explique le résultat d'une requête SQL.
+     * Explique le résultat d'une requête SQL en français naturel.
      */
     public String explainQueryResult(String question, String sql, List<Map<String, Object>> rows) {
         try {
@@ -324,7 +175,6 @@ Rules:
 - Example of style:
   "Il y a 3 factures carburant à Boumhal en octobre 2025 pour un total de 12 000 TND."
 """;
-
 
             List<Map<String, String>> messages = new ArrayList<>();
             messages.add(Map.of("role", "system", "content", systemPrompt));
@@ -365,6 +215,4 @@ Rules:
             return "Erreur lors de la génération de l'explication IA.";
         }
     }
-
-
 }

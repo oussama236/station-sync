@@ -1,12 +1,8 @@
 package tn.spring.stationsync.Ai;
 
 import org.springframework.web.bind.annotation.*;
-import tn.spring.stationsync.Dtos.AiChatRequest;
-import tn.spring.stationsync.Dtos.AiChatResponse;
 import tn.spring.stationsync.Dtos.AiNlQueryRequest;
 import tn.spring.stationsync.Dtos.AiNlQueryResponse;
-import tn.spring.stationsync.Dtos.QueryPlan;
-import tn.spring.stationsync.Ai.AiSqlService;
 
 import java.util.Collections;
 
@@ -22,26 +18,7 @@ public class AiController {
         this.aiSqlService = aiSqlService;
     }
 
-    // 🧠 Old endpoint (Phase 1) — text answer
-    @PostMapping("/ask")
-    public AiChatResponse ask(@RequestBody AiChatRequest request) {
-        String answer = aiClient.ask(
-                request.getMessage(),
-                request.getContextTable()
-        );
-        return new AiChatResponse(answer);
-    }
-
-    // 🧩 Old endpoint (Phase 2) — returns parsed QueryPlan
-    @PostMapping("/plan")
-    public QueryPlan askPlan(@RequestBody AiChatRequest request) {
-        return aiClient.askPlan(
-                request.getMessage(),
-                request.getContextTable()
-        );
-    }
-
-    // NL → SQL (avec exécution optionnelle)
+    // ✅ NL → SQL (avec exécution optionnelle)
     @PostMapping("/nl-query")
     public AiNlQueryResponse handleNlQuery(@RequestBody AiNlQueryRequest request) {
         boolean execute = request.getExecute() != null && request.getExecute();
@@ -67,7 +44,7 @@ public class AiController {
             return resp;
         }
 
-        // 4️⃣ Sinon (demo, pas d’exécution)
+        // 4️⃣ Sinon (mode démo : pas d'exécution)
         AiNlQueryResponse response = new AiNlQueryResponse();
         response.setSql(sql);
         response.setExecuted(false);
@@ -76,6 +53,4 @@ public class AiController {
         response.setAnswerText("Requête SQL générée, non exécutée (mode démo).");
         return response;
     }
-
-
 }
