@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tn.spring.stationsync.Dtos.PrelevementDetailsResponse;
 import tn.spring.stationsync.Entities.NatureOperation;
+import tn.spring.stationsync.Entities.NotificationType;
 import tn.spring.stationsync.Entities.Prelevement;
 import tn.spring.stationsync.Entities.Shell;
 import tn.spring.stationsync.Entities.Statut;
@@ -27,24 +28,26 @@ public class PrelevementServiceImpl implements IPrelevementService {
     @Autowired
     private NotificationService notificationService;
 
+    // =========================================================================
+    // SAVE
+    // =========================================================================
+
     @Override
     public Prelevement savePrelevement(Prelevement prelevement) {
         return prelevementRepository.save(prelevement);
     }
 
-    /** ---- Simulation (unchanged) ---- */
+    // =========================================================================
+    // SIMULATION (no persistence)
+    // =========================================================================
+
     @Override
     public PrelevementDetailsResponse simulateAutoAssignement(double montant, LocalDate dateOperation) {
-        List<Shell> candidats = shellRepository.findByStatutAndDatePrelevementBefore(Statut.EN_ATTENTE, dateOperation)
-                .stream()
-                .filter(shell -> {
-                    NatureOperation nature = shell.getNatureOperation();
-                    return nature == NatureOperation.AVOIR
-                            || nature.name().startsWith("FACTURE")
-                            || nature == NatureOperation.LOYER;
-                })
-                .sorted(Comparator.comparing(Shell::getDatePrelevement).reversed())
-                .collect(Collectors.toList());
+        List<Shell> candidats = buildCandidats(
+                shellRepository.findByStatutAndDatePrelevementBefore(Statut.EN_ATTENTE, dateOperation),
+                null,
+                dateOperation
+        );
 
         List<Shell> solution = trouverCombinaisonExacte(candidats, montant);
 
@@ -55,88 +58,97 @@ public class PrelevementServiceImpl implements IPrelevementService {
         return new PrelevementDetailsResponse(virtuel, solution);
     }
 
-    /** ---- Candidates for manual affectation (EN_ATTENTE before date) ---- */
+    // =========================================================================
+    // CANDIDATES FOR MANUAL AFFECTATION (new prelevement)
+    // =========================================================================
+
     @Override
     public List<Shell> getShellsForManualAffectation(LocalDate dateOperation) {
         return shellRepository.findByStatutAndDatePrelevementBefore(Statut.EN_ATTENTE, dateOperation)
                 .stream()
-                .sorted(Comparator.comparing(Shell::getDatePrelevement)) // oldest first
+                .sorted(Comparator.comparing(Shell::getDatePrelevement))
                 .collect(Collectors.toList());
     }
 
-    /** ---- Search passthrough to repository ---- */
+    // =========================================================================
+    // SEARCH
+    // =========================================================================
+
     @Override
     public List<Prelevement> searchPrelevements(LocalDate date, Double montant) {
         return prelevementRepository.searchPrelevements(date, montant);
     }
 
-    /** ---- Manual assignment (guard against foreign-linked shells) ---- */
+    // =========================================================================
+    // MANUAL ASSIGNMENT
+    // =========================================================================
+
     @Override
     @Transactional
     public PrelevementDetailsResponse assignShellsManually(Integer prelevementId, List<Integer> shellIds) {
-        Prelevement prelevement = prelevementRepository.findById(prelevementId)
-                .orElseThrow(() -> new RuntimeException("Prélèvement non trouvé"));
+        Prelevement prelevement = findPrelevementOrThrow(prelevementId);
 
         List<Shell> shells = shellRepository.findAllById(shellIds).stream()
-                .filter(s ->
-                        // allow EN_ATTENTE or already linked to THIS prelevement
-                        s.getStatut() == Statut.EN_ATTENTE
-                                || (s.getPrelevement() != null
-                                && Objects.equals(s.getPrelevement().getIdPrelevement(), prelevementId))
-                )
-                .peek(s -> {
-                    s.setPrelevement(prelevement);
-                    s.setStatut(Statut.OK);
-                })
+                .filter(s -> isEligibleForAssignment(s, prelevementId))
                 .collect(Collectors.toList());
 
+        attachShells(shells, prelevement);
         shellRepository.saveAll(shells);
+
         prelevement.setShells(shells);
         prelevementRepository.save(prelevement);
 
-        for (Shell s : shells) {
-            notificationService.resolveByRef(tn.spring.stationsync.Entities.NotificationType.SHELL, s.getIdShell());
-        }
+        resolveNotifications(shells);
 
         return new PrelevementDetailsResponse(prelevement, shells);
     }
 
-    /** ---- Combo finder (unchanged) ---- */
-    private List<Shell> trouverCombinaisonExacte(List<Shell> candidats, double montantCible) {
-        List<Shell> result = new ArrayList<>();
-        trouverCombinaisonRecursive(candidats, 0, new ArrayList<>(), montantCible, result);
-        return result;
-    }
+    // =========================================================================
+    // AUTO-ASSIGN (for existing prelevement)
+    // =========================================================================
 
-    private boolean trouverCombinaisonRecursive(List<Shell> shells, int index, List<Shell> courant,
-                                                double montantCible, List<Shell> resultat) {
-        double somme = courant.stream()
-                .mapToDouble(shell -> {
-                    NatureOperation nature = shell.getNatureOperation();
-                    if (nature == NatureOperation.AVOIR) return -shell.getMontant();
-                    if (nature.name().startsWith("FACTURE") || nature == NatureOperation.LOYER)
-                        return shell.getMontant();
-                    return 0;
-                })
-                .sum();
+    @Override
+    @Transactional
+    public PrelevementDetailsResponse autoAssign(Integer prelevementId) {
+        Prelevement p = findPrelevementOrThrow(prelevementId);
 
-        if (Math.abs(somme - montantCible) < 0.001) {
-            resultat.addAll(courant);
-            return true;
+        List<Shell> candidats = buildCandidats(
+                shellRepository.findByStatutAndDatePrelevementBefore(Statut.EN_ATTENTE, p.getDateOperation()),
+                p,
+                p.getDateOperation()
+        );
+
+        List<Shell> solution = trouverCombinaisonExacte(candidats, p.getMontant());
+        if (solution.isEmpty()) {
+            throw new IllegalStateException("Aucune combinaison exacte trouvée pour l'auto-affectation.");
         }
 
-        if (index >= shells.size()) return false;
+        applyAssignment(p, solution);
 
-        for (int i = index; i < shells.size(); i++) {
-            List<Shell> next = new ArrayList<>(courant);
-            next.add(shells.get(i));
-            if (trouverCombinaisonRecursive(shells, i + 1, next, montantCible, resultat)) return true;
-        }
-
-        return false;
+        return new PrelevementDetailsResponse(p, p.getShells());
     }
 
-    /** ---- CRUD ---- */
+    // =========================================================================
+    // CANDIDATES FOR EDIT MODAL
+    // =========================================================================
+
+    @Override
+    public List<Shell> getCandidatesForEdit(Integer prelevementId) {
+        Prelevement p = findPrelevementOrThrow(prelevementId);
+
+        return buildUnion(
+                shellRepository.findByStatutAndDatePrelevementBefore(Statut.EN_ATTENTE, p.getDateOperation()),
+                p
+        ).values().stream()
+                .filter(s -> isEligibleForAssignment(s, prelevementId))
+                .sorted(Comparator.comparing(Shell::getDatePrelevement))
+                .collect(Collectors.toList());
+    }
+
+    // =========================================================================
+    // CRUD
+    // =========================================================================
+
     @Override
     public List<Prelevement> getAllPrelevements() {
         return prelevementRepository.findAll();
@@ -144,162 +156,265 @@ public class PrelevementServiceImpl implements IPrelevementService {
 
     @Override
     public Prelevement getPrelevement(Integer idPrelevement) {
-        return prelevementRepository.findById(idPrelevement)
-                .orElseThrow(() -> new RuntimeException("Prélèvement non trouvé"));
+        return findPrelevementOrThrow(idPrelevement);
     }
 
-    /** ---- Delete: revert shells ---- */
     @Override
     @Transactional
     public void deletePrelevement(Integer idPrelevement) {
-        Prelevement p = getPrelevement(idPrelevement);
+        Prelevement p = findPrelevementOrThrow(idPrelevement);
 
-        List<Shell> shells = Optional.ofNullable(p.getShells()).orElse(List.of())
-                .stream()
-                .peek(s -> {
-                    s.setPrelevement(null);
-                    s.setStatut(Statut.EN_ATTENTE);
-                })
-                .collect(Collectors.toList());
-
+        List<Shell> shells = Optional.ofNullable(p.getShells()).orElse(List.of());
+        detachShells(shells);
         shellRepository.saveAll(shells);
+
         prelevementRepository.deleteById(idPrelevement);
     }
 
-    /** ---- Update: detach removed + attach new ---- */
     @Override
     @Transactional
     public Prelevement updatePrelevement(Prelevement p) {
-        Prelevement existing = getPrelevement(p.getIdPrelevement());
+        Prelevement existing = findPrelevementOrThrow(p.getIdPrelevement());
 
         existing.setDateOperation(p.getDateOperation());
         existing.setMontant(p.getMontant());
 
         List<Integer> newIds = Optional.ofNullable(p.getShells()).orElse(List.of())
-                .stream().map(Shell::getIdShell).collect(Collectors.toList());
+                .stream()
+                .map(Shell::getIdShell)
+                .collect(Collectors.toList());
 
-        List<Shell> current = Optional.ofNullable(existing.getShells()).orElse(List.of());
-        Set<Integer> currentIds = current.stream().map(Shell::getIdShell).collect(Collectors.toSet());
+        Set<Integer> currentIds = Optional.ofNullable(existing.getShells()).orElse(List.of())
+                .stream()
+                .map(Shell::getIdShell)
+                .collect(Collectors.toSet());
 
-        List<Shell> toDetach = current.stream()
+        // Detach shells removed from the list
+        List<Shell> toDetach = Optional.ofNullable(existing.getShells()).orElse(List.of())
+                .stream()
                 .filter(s -> !newIds.contains(s.getIdShell()))
-                .peek(s -> {
-                    s.setPrelevement(null);
-                    s.setStatut(Statut.EN_ATTENTE);
-                }).collect(Collectors.toList());
-
-        List<Shell> toAttach = shellRepository.findAllById(newIds).stream()
-                .filter(s -> !currentIds.contains(s.getIdShell()))
-                .peek(s -> {
-                    s.setPrelevement(existing);
-                    s.setStatut(Statut.OK);
-                }).collect(Collectors.toList());
-
+                .collect(Collectors.toList());
+        detachShells(toDetach);
         shellRepository.saveAll(toDetach);
+
+        // Attach newly added shells
+        List<Shell> toAttach = shellRepository.findAllById(newIds)
+                .stream()
+                .filter(s -> !currentIds.contains(s.getIdShell()))
+                .collect(Collectors.toList());
+        attachShells(toAttach, existing);
         shellRepository.saveAll(toAttach);
 
-        for (Shell s : toAttach)
-            notificationService.resolveByRef(tn.spring.stationsync.Entities.NotificationType.SHELL, s.getIdShell());
+        resolveNotifications(toAttach);
 
         existing.setShells(shellRepository.findAllById(newIds));
         return prelevementRepository.save(existing);
     }
 
-    /** ---- Details with sorted shells ---- */
+    // =========================================================================
+    // DETAILS WITH SORTED SHELLS
+    // =========================================================================
+
     @Override
     public PrelevementDetailsResponse getPrelevementAvecResume(Integer id) {
-        Prelevement p = getPrelevement(id);
+        Prelevement p = findPrelevementOrThrow(id);
+
         List<Shell> utiles = Optional.ofNullable(p.getShells()).orElse(List.of())
                 .stream()
                 .filter(s -> s.getNatureOperation() != null)
                 .sorted(Comparator.comparing(Shell::getDatePrelevement))
                 .collect(Collectors.toList());
+
         return new PrelevementDetailsResponse(p, utiles);
     }
 
-    /** ---- Auto-assign for edit: EN_ATTENTE ∪ already linked (exclude foreign-linked) ---- */
-    @Override
-    @Transactional
-    public PrelevementDetailsResponse autoAssign(Integer prelevementId) {
-        Prelevement p = getPrelevement(prelevementId);
-        double montant = p.getMontant();
-        LocalDate dateOp = p.getDateOperation();
+    // =========================================================================
+    // PRIVATE HELPERS
+    // =========================================================================
 
-        // EN_ATTENTE before/equal date + already linked to THIS prelevement
-        List<Shell> enAttente = shellRepository.findByStatutAndDatePrelevementBefore(Statut.EN_ATTENTE, dateOp);
-        List<Shell> alreadyLinked = Optional.ofNullable(p.getShells()).orElse(List.of());
-
-        Map<Integer, Shell> union = new LinkedHashMap<>();
-        for (Shell s : alreadyLinked) union.put(s.getIdShell(), s);
-        for (Shell s : enAttente) {
-            if (!s.getDatePrelevement().isAfter(dateOp)) {
-                union.putIfAbsent(s.getIdShell(), s);
-            }
-        }
-
-        // EXCLUDE shells linked to another prelevement
-        List<Shell> candidats = union.values().stream()
-                .filter(s -> s.getPrelevement() == null
-                        || Objects.equals(s.getPrelevement().getIdPrelevement(), p.getIdPrelevement()))
-                .filter(shell -> {
-                    NatureOperation nature = shell.getNatureOperation();
-                    return nature == NatureOperation.AVOIR
-                            || nature.name().startsWith("FACTURE")
-                            || nature == NatureOperation.LOYER;
-                })
-                .sorted(Comparator.comparing(Shell::getDatePrelevement).reversed())
-                .collect(Collectors.toList());
-
-        List<Shell> solution = trouverCombinaisonExacte(candidats, montant);
-        if (solution.isEmpty()) {
-            throw new IllegalStateException("Aucune combinaison exacte trouvée pour l’auto-affectation.");
-        }
-
-        // Detach non-selected
-        Set<Integer> solutionIds = solution.stream().map(Shell::getIdShell).collect(Collectors.toSet());
-        List<Shell> toDetach = Optional.ofNullable(p.getShells()).orElse(List.of()).stream()
-                .filter(s -> !solutionIds.contains(s.getIdShell()))
-                .peek(s -> {
-                    s.setPrelevement(null);
-                    s.setStatut(Statut.EN_ATTENTE);
-                }).collect(Collectors.toList());
-
-        // Attach selected
-        List<Shell> toAttach = solution.stream()
-                .peek(s -> {
-                    s.setPrelevement(p);
-                    s.setStatut(Statut.OK);
-                }).collect(Collectors.toList());
-
-        shellRepository.saveAll(toDetach);
-        shellRepository.saveAll(toAttach);
-
-        for (Shell s : toAttach)
-            notificationService.resolveByRef(tn.spring.stationsync.Entities.NotificationType.SHELL, s.getIdShell());
-
-        p.setShells(toAttach);
-        prelevementRepository.save(p);
-
-        return new PrelevementDetailsResponse(p, p.getShells());
+    /** Fetch prelevement or throw a descriptive exception. */
+    private Prelevement findPrelevementOrThrow(Integer id) {
+        return prelevementRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Prélèvement non trouvé : id=" + id));
     }
 
-    /** ---- Candidates for EDIT modal: EN_ATTENTE ∪ already linked (exclude foreign-linked) ---- */
-    @Override
-    public List<Shell> getCandidatesForEdit(Integer prelevementId) {
-        Prelevement p = getPrelevement(prelevementId);
-        LocalDate dateOp = p.getDateOperation();
+    /**
+     * Build candidate list for auto-assignment:
+     * EN_ATTENTE shells on or before dateOp, plus shells already linked to this prelevement.
+     * Excludes shells linked to a DIFFERENT prelevement.
+     * Filters to AVOIR / FACTURE* / LOYER natures only, then sorts newest-first.
+     */
+    private List<Shell> buildCandidats(List<Shell> enAttente, Prelevement owner, LocalDate dateOp) {
+        Map<Integer, Shell> union = buildUnion(enAttente, owner);
 
-        List<Shell> enAttente = shellRepository.findByStatutAndDatePrelevementBefore(Statut.EN_ATTENTE, dateOp);
-        List<Shell> alreadyLinked = Optional.ofNullable(p.getShells()).orElse(List.of());
-
-        Map<Integer, Shell> union = new LinkedHashMap<>();
-        for (Shell s : alreadyLinked) union.put(s.getIdShell(), s);
-        for (Shell s : enAttente) union.putIfAbsent(s.getIdShell(), s);
+        Integer ownerId = (owner != null) ? owner.getIdPrelevement() : null;
 
         return union.values().stream()
                 .filter(s -> s.getPrelevement() == null
-                        || Objects.equals(s.getPrelevement().getIdPrelevement(), p.getIdPrelevement()))
-                .sorted(Comparator.comparing(Shell::getDatePrelevement))
+                        || Objects.equals(s.getPrelevement().getIdPrelevement(), ownerId))
+                .filter(s -> {
+                    NatureOperation n = s.getNatureOperation();
+                    return n == NatureOperation.AVOIR
+                            || n.name().startsWith("FACTURE")
+                            || n == NatureOperation.LOYER;
+                })
+                .filter(s -> !s.getDatePrelevement().isAfter(dateOp))
+                .sorted(Comparator.comparing(Shell::getDatePrelevement).reversed())
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Merge EN_ATTENTE shells with shells already linked to the given prelevement,
+     * deduplicating by id (linked shells take priority).
+     */
+    private Map<Integer, Shell> buildUnion(List<Shell> enAttente, Prelevement owner) {
+        Map<Integer, Shell> union = new LinkedHashMap<>();
+
+        if (owner != null) {
+            Optional.ofNullable(owner.getShells()).orElse(List.of())
+                    .forEach(s -> union.put(s.getIdShell(), s));
+        }
+
+        enAttente.forEach(s -> union.putIfAbsent(s.getIdShell(), s));
+        return union;
+    }
+
+    /** True if the shell is EN_ATTENTE or already linked to the given prelevement. */
+    private boolean isEligibleForAssignment(Shell s, Integer prelevementId) {
+        return s.getStatut() == Statut.EN_ATTENTE
+                || (s.getPrelevement() != null
+                && Objects.equals(s.getPrelevement().getIdPrelevement(), prelevementId));
+    }
+
+    /** Set shell → prelevement link and mark OK. */
+    private void attachShells(List<Shell> shells, Prelevement prelevement) {
+        for (Shell s : shells) {
+            s.setPrelevement(prelevement);
+            s.setStatut(Statut.OK);
+        }
+    }
+
+    /** Remove shell → prelevement link and revert to EN_ATTENTE. */
+    private void detachShells(List<Shell> shells) {
+        for (Shell s : shells) {
+            s.setPrelevement(null);
+            s.setStatut(Statut.EN_ATTENTE);
+        }
+    }
+
+    /** Resolve SHELL notifications for each shell. */
+    private void resolveNotifications(List<Shell> shells) {
+        for (Shell s : shells) {
+            notificationService.resolveByRef(NotificationType.SHELL, s.getIdShell());
+        }
+    }
+
+    /**
+     * Detach old shells not in solution, attach solution shells, persist, notify.
+     */
+    private void applyAssignment(Prelevement p, List<Shell> solution) {
+        Set<Integer> solutionIds = solution.stream()
+                .map(Shell::getIdShell)
+                .collect(Collectors.toSet());
+
+        List<Shell> toDetach = Optional.ofNullable(p.getShells()).orElse(List.of())
+                .stream()
+                .filter(s -> !solutionIds.contains(s.getIdShell()))
+                .collect(Collectors.toList());
+
+        detachShells(toDetach);
+        shellRepository.saveAll(toDetach);
+
+        attachShells(solution, p);
+        shellRepository.saveAll(solution);
+
+        resolveNotifications(solution);
+
+        p.setShells(solution);
+        prelevementRepository.save(p);
+    }
+
+    // =========================================================================
+    // SUBSET-SUM — optimised backtracking with suffix-sum pruning
+    // =========================================================================
+
+    /**
+     * Finds a combination of shells whose signed contributions sum exactly to
+     * {@code montantCible} (±0.001 tolerance).
+     *
+     * <p>Algorithm: recursive backtracking with two pruning strategies:
+     * <ol>
+     *   <li>Suffix-sum upper-bound: if the remaining shells cannot possibly reach
+     *       the target, abandon the branch immediately.</li>
+     *   <li>Sorted descending by amount so large shells are tried first, making
+     *       successful branches reachable faster.</li>
+     * </ol>
+     * Worst-case is still O(2^n) but in practice the pruning keeps it tractable
+     * for the dozens of shells typically found in this domain.
+     */
+    private List<Shell> trouverCombinaisonExacte(List<Shell> candidats, double montantCible) {
+        // Sort descending: try largest contributions first for faster convergence
+        List<Shell> sorted = candidats.stream()
+                .sorted(Comparator.comparingDouble(s -> -getContribution(s)))
+                .collect(Collectors.toList());
+
+        // Precompute suffix sums (absolute contributions) for upper-bound pruning
+        int n = sorted.size();
+        double[] suffixSum = new double[n + 1];
+        for (int i = n - 1; i >= 0; i--) {
+            suffixSum[i] = suffixSum[i + 1] + Math.abs(getContribution(sorted.get(i)));
+        }
+
+        List<Shell> result = new ArrayList<>();
+        trouverCombinaisonRecursive(sorted, 0, new ArrayList<>(), 0.0, montantCible, result, suffixSum);
+        return result;
+    }
+
+    private boolean trouverCombinaisonRecursive(
+            List<Shell> shells,
+            int index,
+            List<Shell> courant,
+            double sommeCourante,
+            double cible,
+            List<Shell> resultat,
+            double[] suffixSum) {
+
+        // Base case: exact match found
+        if (Math.abs(sommeCourante - cible) < 0.001) {
+            resultat.addAll(courant);
+            return true;
+        }
+
+        // Pruning: no more shells, or remaining shells cannot bridge the gap
+        if (index >= shells.size()) return false;
+        double remaining = cible - sommeCourante;
+        if (Math.abs(remaining) > suffixSum[index] + 0.001) return false;
+
+        for (int i = index; i < shells.size(); i++) {
+            Shell s = shells.get(i);
+            courant.add(s);
+            if (trouverCombinaisonRecursive(
+                    shells, i + 1, courant,
+                    sommeCourante + getContribution(s),
+                    cible, resultat, suffixSum)) {
+                return true;
+            }
+            courant.remove(courant.size() - 1);
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns the signed monetary contribution of a shell:
+     * AVOIR → negative (credit reduces the debit),
+     * FACTURE* / LOYER → positive (charges increase the debit),
+     * anything else → 0.
+     */
+    private double getContribution(Shell shell) {
+        NatureOperation nature = shell.getNatureOperation();
+        if (nature == NatureOperation.AVOIR) return -shell.getMontant();
+        if (nature.name().startsWith("FACTURE") || nature == NatureOperation.LOYER) return shell.getMontant();
+        return 0.0;
     }
 }
