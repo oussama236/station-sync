@@ -35,8 +35,8 @@ public class BankStatementController {
     @GetMapping("/bank-statement")
     public BankStatementResponse getBankStatement(
             @RequestParam(required = false) Station station,
-            @RequestParam LocalDate dateFrom,
-            @RequestParam LocalDate dateTo
+            @RequestParam(required = false) LocalDate dateFrom,
+            @RequestParam(required = false) LocalDate dateTo
     ) {
         List<Banque> credits = banqueService.getFilteredBanks(
                 station,
@@ -54,8 +54,8 @@ public class BankStatementController {
     }
     @GetMapping(value = "/bank-statement/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> downloadBankStatementPdf(
-            @RequestParam LocalDate dateFrom,
-            @RequestParam LocalDate dateTo
+            @RequestParam(required = false) LocalDate dateFrom,
+            @RequestParam(required = false) LocalDate dateTo
     ) {
         List<Banque> credits = banqueService.getFilteredBanks(null, List.of(Statut.OK), dateFrom, dateTo);
         List<Prelevement> debits = prelevementService.getFilteredPrelevements(dateFrom, dateTo);
