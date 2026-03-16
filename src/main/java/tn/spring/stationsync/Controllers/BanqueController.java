@@ -8,6 +8,7 @@ import tn.spring.stationsync.Entities.Station;
 import tn.spring.stationsync.Entities.Statut;
 import tn.spring.stationsync.Services.IBanqueService;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -65,10 +66,11 @@ public class BanqueController {
     @GetMapping("/banques/filter")
     public List<Banque> filterBanques(
             @RequestParam(required = false) Station station,
-            @RequestParam(required = false) Statut statut
+            @RequestParam(required = false) Statut statut,
+            @RequestParam LocalDate dateFrom,
+            @RequestParam LocalDate dateTo
     ) {
         List<Statut> statuts = (statut != null) ? List.of(statut) : null;
-        return banqueService.getFilteredBanks(station, statuts);
+        return banqueService.getFilteredBanks(station, statuts, dateFrom, dateTo);
     }
-
 }

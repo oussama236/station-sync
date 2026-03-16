@@ -7,6 +7,7 @@ import tn.spring.stationsync.Entities.Banque;
 import tn.spring.stationsync.Entities.Station;
 import tn.spring.stationsync.Entities.Statut;
 
+import java.time.LocalDate;
 import java.util.List;
 
 
@@ -14,14 +15,20 @@ import java.util.List;
 public interface BanqueRepository extends JpaRepository<Banque, Integer> {
 
     @Query("""
-SELECT b FROM Banque b
-WHERE (:station IS NULL OR b.station = :station)
-  AND ( :#{#statuts == null || #statuts.isEmpty()} = true OR b.statut IN :statuts )
-ORDER BY b.idBanque DESC
-""")
-    List<Banque> findByFilters(@Param("station") Station station,
-                               @Param("statuts") List<Statut> statuts);
-
+       SELECT b
+       FROM Banque b
+       WHERE (:station IS NULL OR b.station = :station)
+       AND (:statuts IS NULL OR b.statut IN :statuts)
+       AND (:dateFrom IS NULL OR b.dateOperation >= :dateFrom)
+       AND (:dateTo IS NULL OR b.dateOperation <= :dateTo)
+       ORDER BY b.dateOperation ASC
+       """)
+    List<Banque> findByFilters(
+            Station station,
+            List<Statut> statuts,
+            LocalDate dateFrom,
+            LocalDate dateTo
+    );
 
     @Query("SELECT b FROM Banque b ORDER BY b.idBanque DESC")
     List<Banque> findAllOrderedByIdDesc();

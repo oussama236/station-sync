@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Relevé Bancaire</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            color: #222;
+            margin: 30px;
+        }
+
+        .statement-header {
+            display: table;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .title-box,
+        .balance-box-wrapper {
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        .title-box h2 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .balance-box-wrapper {
+            text-align: right;
+        }
+
+        .balance-box {
+            display: inline-block;
+            background: #e8f1ff;
+            border: 1px solid #a3c4f3;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: 600;
+        }
+
+        .balance-label {
+            color: #4169e1;
+        }
+
+        .balance-value {
+            color: #1e40af;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .period {
+            margin-bottom: 18px;
+            font-size: 13px;
+        }
+
+        .table-wrapper {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        thead th {
+            background: #fafafa;
+            font-weight: bold;
+        }
+
+        .vr {
+            border-right: 1px solid #000;
+        }
+
+        .credit {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .debit {
+            color: #c0392b;
+            font-weight: bold;
+        }
+
+        .totals-row th,
+        .totals-row td {
+            background: #f9f9f9;
+            border-top: 2px solid #000;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .text-end {
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+<div class="statement-header">
+    <div class="title-box">
+        <h2>Relevé Bancaire</h2>
+    </div>
+
+    <div class="balance-box-wrapper">
+        <div class="balance-box">
+            <span class="balance-label">Solde :</span>
+            <span class="balance-value" th:text="${balance} + ' TND'"></span>
+        </div>
+    </div>
+</div>
+
+<div class="period">
+    <strong>Période :</strong>
+    <span th:text="${dateFrom}"></span>
+    →
+    <span th:text="${dateTo}"></span>
+</div>
+
+<div class="table-wrapper">
+    <table>
+        <thead>
+        <tr>
+            <th>Date (Crédit)</th>
+            <th>Nature (Crédit)</th>
+            <th class="vr">Montant (TND)</th>
+            <th>Date (Débit)</th>
+            <th>Nature (Débit)</th>
+            <th>Montant (TND)</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="row : ${rows}">
+            <td th:text="${row.creditDate}"></td>
+            <td th:text="${row.creditNature}"></td>
+            <td class="credit vr" th:text="${row.creditAmount}"></td>
+
+            <td th:text="${row.debitDate}"></td>
+            <td th:text="${row.debitNature}"></td>
+            <td class="debit" th:text="${row.debitAmount}"></td>
+        </tr>
+        </tbody>
+
+        <tfoot>
+        <tr class="totals-row">
+            <th colspan="2" class="text-end">Total Crédits :</th>
+            <th class="credit vr" th:text="${totalCredits}"></th>
+            <th></th>
+            <th class="text-end">Total Débits :</th>
+            <th class="debit" th:text="${totalDebits}"></th>
+        </tr>
+        </tfoot>
+    </table>
+</div>
+
+</body>
+</html>

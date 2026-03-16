@@ -7,6 +7,7 @@ import tn.spring.stationsync.Repositories.BanqueRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -49,8 +50,9 @@ public  class BanqueServiceImpl implements IBanqueService {
         return saved;
     }
 
-    public List<Banque> getFilteredBanks(Station station, List<Statut> statuts) {
-        return bankRepository.findByFilters(station, statuts);
+    public List<Banque> getFilteredBanks(Station station, List<Statut> statuts,
+                                         LocalDate dateFrom, LocalDate dateTo) {
+        return bankRepository.findByFilters(station, statuts, dateFrom, dateTo);
     }
 
 

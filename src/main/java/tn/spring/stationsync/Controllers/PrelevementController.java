@@ -103,4 +103,13 @@ public class PrelevementController {
     public ResponseEntity<List<Shell>> getEditCandidates(@PathVariable Integer id) {
         return ResponseEntity.ok(prelevementService.getCandidatesForEdit(id));
     }
+
+    @GetMapping("/prelevements/filter")
+    public List<Prelevement> filterPrelevements(
+            @RequestParam LocalDate dateFrom,
+            @RequestParam LocalDate dateTo
+    ) {
+        return prelevementService.getFilteredPrelevements(dateFrom, dateTo);
+    }
+
 }

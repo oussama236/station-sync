@@ -43,6 +43,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Allow preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/addPrelevement").permitAll()
 
                         // 🔓 Actuator for Prometheus (health/info/prometheus)
                         .requestMatchers(

@@ -19,4 +19,12 @@ public interface PrelevementRepository extends JpaRepository<Prelevement, Intege
             @Param("date") LocalDate date,
             @Param("montant") Double montant
     );
-}
+
+    @Query("""
+       SELECT p
+       FROM Prelevement p
+       WHERE (:dateFrom IS NULL OR p.dateOperation >= :dateFrom)
+       AND (:dateTo IS NULL OR p.dateOperation <= :dateTo)
+       ORDER BY p.dateOperation ASC
+       """)
+    List<Prelevement> findByDateRange(LocalDate dateFrom, LocalDate dateTo);}

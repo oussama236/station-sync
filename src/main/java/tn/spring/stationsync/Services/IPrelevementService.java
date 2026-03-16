@@ -34,4 +34,6 @@ public interface IPrelevementService {
 
     /** 🔹 NEW: Return candidates (EN_ATTENTE ∪ already linked) for edit modal */
     List<Shell> getCandidatesForEdit(Integer prelevementId);
+
+    List<Prelevement> getFilteredPrelevements(LocalDate dateFrom, LocalDate dateTo);
 }

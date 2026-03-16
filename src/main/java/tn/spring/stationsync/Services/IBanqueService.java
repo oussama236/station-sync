@@ -4,6 +4,7 @@ import tn.spring.stationsync.Entities.Banque;
 import tn.spring.stationsync.Entities.Station;
 import tn.spring.stationsync.Entities.Statut;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface IBanqueService {
@@ -24,7 +25,7 @@ public interface IBanqueService {
     //Update Bank by ID
     Banque updateBanque (Banque  b);
 
-    List<Banque> getFilteredBanks(Station station, List<Statut> statuts);
+    List<Banque> getFilteredBanks(Station station, List<Statut> statuts, LocalDate dateFrom, LocalDate dateTo);
 
     void updateBankStatut(Integer bankId);
 

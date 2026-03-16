@@ -145,6 +145,11 @@ public class PrelevementServiceImpl implements IPrelevementService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<Prelevement> getFilteredPrelevements(LocalDate dateFrom, LocalDate dateTo) {
+        return prelevementRepository.findByDateRange(dateFrom, dateTo);
+    }
+
     // =========================================================================
     // CRUD
     // =========================================================================
