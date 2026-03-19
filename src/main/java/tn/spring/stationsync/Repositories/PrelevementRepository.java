@@ -1,7 +1,7 @@
 package tn.spring.stationsync.Repositories;
 
-
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import tn.spring.stationsync.Entities.Prelevement;
@@ -9,8 +9,7 @@ import tn.spring.stationsync.Entities.Prelevement;
 import java.time.LocalDate;
 import java.util.List;
 
-
-public interface PrelevementRepository extends JpaRepository<Prelevement, Integer> {
+public interface PrelevementRepository extends JpaRepository<Prelevement, Integer>, JpaSpecificationExecutor<Prelevement> {
 
     @Query("SELECT p FROM Prelevement p " +
             "WHERE (:date IS NULL OR p.dateOperation = :date) " +
@@ -19,12 +18,4 @@ public interface PrelevementRepository extends JpaRepository<Prelevement, Intege
             @Param("date") LocalDate date,
             @Param("montant") Double montant
     );
-
-    @Query("""
-       SELECT p
-       FROM Prelevement p
-       WHERE (:dateFrom IS NULL OR p.dateOperation >= :dateFrom)
-       AND (:dateTo IS NULL OR p.dateOperation <= :dateTo)
-       ORDER BY p.dateOperation ASC
-       """)
-    List<Prelevement> findByDateRange(LocalDate dateFrom, LocalDate dateTo);}
+}

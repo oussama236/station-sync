@@ -11,7 +11,9 @@ import tn.spring.stationsync.Entities.Shell;
 import tn.spring.stationsync.Entities.Statut;
 import tn.spring.stationsync.Repositories.PrelevementRepository;
 import tn.spring.stationsync.Repositories.ShellRepository;
-
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import tn.spring.stationsync.Specifications.PrelevementSpecification;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -147,9 +149,17 @@ public class PrelevementServiceImpl implements IPrelevementService {
 
     @Override
     public List<Prelevement> getFilteredPrelevements(LocalDate dateFrom, LocalDate dateTo) {
-        return prelevementRepository.findByDateRange(dateFrom, dateTo);
-    }
 
+        if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
+            throw new IllegalArgumentException("dateFrom must be before or equal to dateTo");
+        }
+
+        Specification<Prelevement> specification = Specification
+                .where(PrelevementSpecification.dateOperationGreaterThanOrEqual(dateFrom))
+                .and(PrelevementSpecification.dateOperationLessThanOrEqual(dateTo));
+
+        return prelevementRepository.findAll(specification, Sort.by(Sort.Direction.ASC, "dateOperation"));
+    }
     // =========================================================================
     // CRUD
     // =========================================================================
