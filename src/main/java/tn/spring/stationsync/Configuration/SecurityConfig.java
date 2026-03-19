@@ -75,7 +75,7 @@ public class SecurityConfig {
                 "http://127.0.0.1:4200",
                 "http://localhost:8089",
                 "http://192.168.74.128:8089",
-                "https://station-sync-render-frontend.onrender.com"
+                "https://station-sync-front.onrender.com"
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
