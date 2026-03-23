@@ -84,14 +84,17 @@ public class PrelevementController {
     }
 
     @GetMapping("/searchPrelevements")
-    public ResponseEntity<List<Prelevement>> searchPrelevements(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(required = false) Double montant
-    ) {
-        List<Prelevement> result = prelevementService.searchPrelevements(date, montant);
-        return ResponseEntity.ok(result);
-    }
+    public List<Prelevement> searchPrelevements(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate date,
 
+            @RequestParam(required = false)
+            Double montant
+    )
+    {
+        return prelevementService.searchPrelevements(date, montant);
+    }
     // Auto-assign for editing a prelevement (uses EN_ATTENTE ∪ already linked)
     @PostMapping("/{id}/auto-assign")
     public ResponseEntity<PrelevementDetailsResponse> autoAssign(@PathVariable Integer id) {

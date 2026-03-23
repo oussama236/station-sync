@@ -11,11 +11,9 @@ import java.util.List;
 
 public interface PrelevementRepository extends JpaRepository<Prelevement, Integer>, JpaSpecificationExecutor<Prelevement> {
 
-    @Query("SELECT p FROM Prelevement p " +
-            "WHERE (:date IS NULL OR p.dateOperation = :date) " +
-            "AND (:montant IS NULL OR p.montant = :montant)")
-    List<Prelevement> searchPrelevements(
-            @Param("date") LocalDate date,
-            @Param("montant") Double montant
-    );
+    List<Prelevement> findByDateOperation(LocalDate dateOperation);
+
+    List<Prelevement> findByMontant(Double montant);
+
+    List<Prelevement> findByDateOperationAndMontant(LocalDate dateOperation, Double montant);
 }

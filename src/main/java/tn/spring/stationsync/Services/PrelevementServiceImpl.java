@@ -76,11 +76,22 @@ public class PrelevementServiceImpl implements IPrelevementService {
     // SEARCH
     // =========================================================================
 
-    @Override
     public List<Prelevement> searchPrelevements(LocalDate date, Double montant) {
-        return prelevementRepository.searchPrelevements(date, montant);
-    }
 
+        if (date != null && montant != null) {
+            return prelevementRepository.findByDateOperationAndMontant(date, montant);
+        }
+
+        if (date != null) {
+            return prelevementRepository.findByDateOperation(date);
+        }
+
+        if (montant != null) {
+            return prelevementRepository.findByMontant(montant);
+        }
+
+        return prelevementRepository.findAll();
+    }
     // =========================================================================
     // MANUAL ASSIGNMENT
     // =========================================================================
