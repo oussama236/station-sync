@@ -67,8 +67,8 @@ public class BanqueController {
     public List<Banque> filterBanques(
             @RequestParam(required = false) Station station,
             @RequestParam(required = false) Statut statut,
-            @RequestParam LocalDate dateFrom,
-            @RequestParam LocalDate dateTo
+            @RequestParam(required = false) LocalDate dateFrom,
+            @RequestParam(required = false) LocalDate dateTo
     ) {
         List<Statut> statuts = (statut != null) ? List.of(statut) : null;
         return banqueService.getFilteredBanks(station, statuts, dateFrom, dateTo);
