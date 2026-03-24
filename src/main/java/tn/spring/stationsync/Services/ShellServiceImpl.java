@@ -84,21 +84,39 @@ public class ShellServiceImpl implements IShellService {
 
     @Override
     public Shell updateShell(Shell updatedShell) {
-        // 🔍 Récupérer l'entité existante dans la base
+
+        // 🔍 Récupérer l'existant
         Shell existingShell = shellRepository.findById(updatedShell.getIdShell())
                 .orElseThrow(() -> new IllegalArgumentException("Shell not found"));
 
-        // 🛠️ Mettre à jour les champs modifiables
+        // ✅ CAS 1 : statut = OK → modification limitée
+        if (existingShell.getStatut() == Statut.OK) {
+
+            existingShell.setNumeroFacture(updatedShell.getNumeroFacture());
+            existingShell.setStation(updatedShell.getStation());
+
+            Shell saved = shellRepository.save(existingShell);
+
+            // garder cohérence notifications
+            notificationService.resolveByRef(
+                    tn.spring.stationsync.Entities.NotificationType.SHELL,
+                    saved.getIdShell()
+            );
+
+            return saved;
+        }
+
+        // ✅ CAS 2 : statut ≠ OK → update normal
         existingShell.setDateOperation(updatedShell.getDateOperation());
         existingShell.setNatureOperation(updatedShell.getNatureOperation());
         existingShell.setNumeroFacture(updatedShell.getNumeroFacture());
         existingShell.setMontant(updatedShell.getMontant());
         existingShell.setStation(updatedShell.getStation());
 
-        // 🧮 Recalcul automatique de la date de prélèvement
+        // 🧮 recalcul date prélèvement
         existingShell.calculateDatePrelevement();
 
-        // 🔁 Mise à jour automatique du statut en fonction de la nouvelle date de prélèvement
+        // 🔁 recalcul statut
         LocalDate today = LocalDate.now();
         if (!existingShell.getDatePrelevement().isAfter(today)) {
             existingShell.setStatut(Statut.EN_ATTENTE);
@@ -106,14 +124,7 @@ public class ShellServiceImpl implements IShellService {
             existingShell.setStatut(Statut.VIDE);
         }
 
-        // 💾 Enregistrement
-        Shell saved = shellRepository.save(existingShell);
-
-        // Auto-resolve when status becomes OK
-        if (saved.getStatut() == Statut.OK) {
-            notificationService.resolveByRef(tn.spring.stationsync.Entities.NotificationType.SHELL, saved.getIdShell());
-        }
-        return saved;
+        return shellRepository.save(existingShell);
     }
 
 
