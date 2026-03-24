@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -12,7 +14,6 @@ import java.util.*;
 @Service
 public class OpenRouterAiClient {
 
-    // 🔹 Prompt spécialisé pour NL → SQL
     private static final String SQL_SYSTEM_PROMPT = """
 You are StationSync's SQL generator.
 
@@ -66,7 +67,6 @@ Output:
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-
     private final String apiUrl;
     private final String apiKey;
     private final String model;
@@ -83,85 +83,82 @@ Output:
         this.model = model;
     }
 
-    /**
-     * NL → SQL : génère une requête SELECT à partir d'une question en français.
-     */
     public String generateSqlFromQuestion(String userMessage, String contextTable) {
+        try {
+            List<Map<String, String>> messages = new ArrayList<>();
 
-        List<Map<String, String>> messages = new ArrayList<>();
+            messages.add(Map.of(
+                    "role", "system",
+                    "content", SQL_SYSTEM_PROMPT
+            ));
 
-        // System prompt spécialisé SQL
-        messages.add(Map.of(
-                "role", "system",
-                "content", SQL_SYSTEM_PROMPT
-        ));
+            String userContent = "Question en français: " + userMessage +
+                    "\nTable de contexte (optionnelle): " + (contextTable == null ? "none" : contextTable);
 
-        String userContent = "Question en français: " + userMessage +
-                "\nTable de contexte (optionnelle): " + (contextTable == null ? "none" : contextTable);
+            messages.add(Map.of(
+                    "role", "user",
+                    "content", userContent
+            ));
 
-        messages.add(Map.of(
-                "role", "user",
-                "content", userContent
-        ));
+            Map<String, Object> body = new HashMap<>();
+            body.put("model", model);
+            body.put("messages", messages);
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("model", model);
-        body.put("messages", messages);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(apiKey);
+            headers.add("HTTP-Referer", "https://stationsync.local");
+            headers.add("X-Title", "StationSync NL-SQL");
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(apiKey);
-        headers.add("HTTP-Referer", "https://stationsync.local");
-        headers.add("X-Title", "StationSync NL-SQL");
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+            ResponseEntity<JsonNode> response = restTemplate.exchange(
+                    apiUrl,
+                    HttpMethod.POST,
+                    entity,
+                    JsonNode.class
+            );
 
-        ResponseEntity<JsonNode> response = restTemplate.exchange(
-                apiUrl,
-                HttpMethod.POST,
-                entity,
-                JsonNode.class
-        );
+            JsonNode root = response.getBody();
 
-        JsonNode root = response.getBody();
-        System.out.println("=== OpenRouter SQL raw response ===");
-        System.out.println(root);
+            if (root == null
+                    || !root.has("choices")
+                    || !root.get("choices").isArray()
+                    || root.get("choices").isEmpty()) {
+                throw new AiUnavailableException("Le service AI est temporairement indisponible. Veuillez réessayer plus tard.");
+            }
 
-        if (root == null
-                || !root.has("choices")
-                || !root.get("choices").isArray()
-                || root.get("choices").isEmpty()) {
-            return "SELECT 1;";
+            JsonNode firstChoice = root.get("choices").get(0);
+            JsonNode messageNode = firstChoice.get("message");
+
+            if (messageNode == null || !messageNode.has("content")) {
+                throw new AiUnavailableException("Réponse invalide du service AI. Veuillez réessayer plus tard.");
+            }
+
+            return messageNode.get("content").asText().trim();
+
+        } catch (ResourceAccessException e) {
+            throw new AiUnavailableException("Le service AI est temporairement indisponible ou surchargé. Veuillez réessayer plus tard.");
+        } catch (RestClientResponseException e) {
+            throw new AiUnavailableException("Le service AI a retourné une erreur. Veuillez réessayer plus tard.");
+        } catch (AiUnavailableException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new AiUnavailableException("Une erreur est survenue lors de la communication avec le service AI.");
         }
-
-        JsonNode firstChoice = root.get("choices").get(0);
-        JsonNode messageNode = firstChoice.get("message");
-
-        if (messageNode == null || !messageNode.has("content")) {
-            return "SELECT 1;";
-        }
-
-        // Ici, content = la requête SQL en texte brut
-        String sql = messageNode.get("content").asText();
-        return sql.trim();
     }
 
-    /**
-     * Explique le résultat d'une requête SQL en français naturel.
-     */
     public String explainQueryResult(String question, String sql, List<Map<String, Object>> rows) {
         try {
-            // On limite l'aperçu (évite d'envoyer 100 lignes)
             int max = Math.min(rows.size(), 10);
             List<Map<String, Object>> preview = rows.subList(0, max);
 
-            // Crée le contenu JSON lisible par l'IA
             String resultJson = objectMapper
                     .writerWithDefaultPrettyPrinter()
                     .writeValueAsString(preview);
 
             String systemPrompt = """
-You are StationSync's intelligent assistant.
+You are StationSync's intelligent financial assistant.
 
 Your goal:
 Given a user's French question, the SQL query that was executed, and its JSON results,
@@ -172,8 +169,6 @@ Rules:
 - Do not show SQL or JSON.
 - If there is one result, describe it clearly (station, montant, date, statut...).
 - If there are multiple, summarize how many and give totals or patterns.
-- Example of style:
-  "Il y a 3 factures carburant à Boumhal en octobre 2025 pour un total de 12 000 TND."
 """;
 
             List<Map<String, String>> messages = new ArrayList<>();
@@ -205,14 +200,25 @@ Rules:
             );
 
             JsonNode root = response.getBody();
-            if (root == null || !root.has("choices")) return "Aucune explication IA reçue.";
+            if (root == null || !root.has("choices")) {
+                throw new AiUnavailableException("Le service AI est temporairement indisponible. Veuillez réessayer plus tard.");
+            }
 
             JsonNode content = root.get("choices").get(0).get("message").get("content");
-            return content == null ? "Aucune explication IA reçue." : content.asText();
+            if (content == null) {
+                throw new AiUnavailableException("Le service AI est temporairement indisponible. Veuillez réessayer plus tard.");
+            }
 
+            return content.asText();
+
+        } catch (ResourceAccessException e) {
+            throw new AiUnavailableException("Le service AI est temporairement indisponible ou surchargé. Veuillez réessayer plus tard.");
+        } catch (RestClientResponseException e) {
+            throw new AiUnavailableException("Le service AI a retourné une erreur. Veuillez réessayer plus tard.");
+        } catch (AiUnavailableException e) {
+            throw e;
         } catch (Exception e) {
-            System.out.println("Erreur IA explication : " + e.getMessage());
-            return "Erreur lors de la génération de l'explication IA.";
+            throw new AiUnavailableException("Une erreur est survenue lors de la communication avec le service AI.");
         }
     }
 }
