@@ -27,7 +27,7 @@ public class AiSqlService {
 
         // enlever le ; final si présent
         if (trimmed.endsWith(";")) {
-            trimmed = trimmed.substring(0, trimmed.length() - 1);
+            trimmed = trimmed.substring(0, trimmed.length() - 1).trim();
         }
 
         String upper = trimmed.toUpperCase(Locale.ROOT);
@@ -38,15 +38,15 @@ public class AiSqlService {
         }
 
         // mots interdits
-        String[] forbidden = {" UPDATE ", " DELETE ", " INSERT ", " DROP ", " ALTER ", " TRUNCATE "};
+        String[] forbidden = {"UPDATE", "DELETE", "INSERT", "DROP", "ALTER", "TRUNCATE"};
         for (String kw : forbidden) {
             if (upper.contains(kw)) {
-                throw new IllegalArgumentException("Mot clé SQL interdit détecté: " + kw.trim());
+                throw new IllegalArgumentException("Mot clé SQL interdit détecté: " + kw);
             }
         }
 
-        // si pas de LIMIT, on en rajoute un
-        if (!upper.contains(" LIMIT ")) {
+        // si pas de LIMIT à la fin, on en rajoute un
+        if (!upper.matches("(?s).*\\bLIMIT\\s+\\d+\\s*$")) {
             trimmed = trimmed + " LIMIT 200";
         }
 

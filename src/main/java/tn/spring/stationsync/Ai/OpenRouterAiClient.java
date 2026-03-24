@@ -56,7 +56,6 @@ Rules:
 - Use the exact column names as defined above (snake_case, lowercase).
 - Prefer filtering by date_operation, station, montant, nature_operation / nature_operation_bank, statut.
 - If the user asks for "octobre 2025", use BETWEEN '2025-10-01' AND '2025-10-31'.
-- Always add a LIMIT 200 at the end (unless the user explicitly asks a small number).
 - If contextTable is provided (shell / banque / prelevement), focus on that table.
 
 Output:
