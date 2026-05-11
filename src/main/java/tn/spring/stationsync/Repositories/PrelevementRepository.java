@@ -16,4 +16,6 @@ public interface PrelevementRepository extends JpaRepository<Prelevement, Intege
     List<Prelevement> findByMontant(Double montant);
 
     List<Prelevement> findByDateOperationAndMontant(LocalDate dateOperation, Double montant);
+
+    List<Prelevement> findAllByOrderByIdPrelevementDesc();
 }

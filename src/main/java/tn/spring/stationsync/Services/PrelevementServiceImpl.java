@@ -1,8 +1,10 @@
 package tn.spring.stationsync.Services;
 
+import tn.spring.stationsync.Dtos.PrelevementSolutionDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tn.spring.stationsync.Dtos.MatchType;
 import tn.spring.stationsync.Dtos.PrelevementDetailsResponse;
 import tn.spring.stationsync.Entities.NatureOperation;
 import tn.spring.stationsync.Entities.NotificationType;
@@ -43,6 +45,7 @@ public class PrelevementServiceImpl implements IPrelevementService {
     // SIMULATION (no persistence)
     // =========================================================================
 
+
     @Override
     public PrelevementDetailsResponse simulateAutoAssignement(double montant, LocalDate dateOperation) {
         List<Shell> candidats = buildCandidats(
@@ -51,15 +54,21 @@ public class PrelevementServiceImpl implements IPrelevementService {
                 dateOperation
         );
 
-        List<Shell> solution = trouverCombinaisonExacte(candidats, montant);
+        MatchingAnalysisResult analysis = analyzeMatching(candidats, montant);
 
         Prelevement virtuel = new Prelevement();
         virtuel.setDateOperation(dateOperation);
         virtuel.setMontant(montant);
 
-        return new PrelevementDetailsResponse(virtuel, solution);
-    }
+        PrelevementDetailsResponse response = new PrelevementDetailsResponse(virtuel, analysis.autoAssignedShells);
+        response.setMatchType(analysis.matchType);
+        response.setCandidateShells(analysis.candidateShells);
+        response.setExactSolutions(toSolutionDtos(analysis.exactSolutions));
+        response.setNumberOfExactSolutions(analysis.numberOfExactSolutions);
+        response.setExactMatch(analysis.matchType == MatchType.UNIQUE_MATCH);
 
+        return response;
+    }
     // =========================================================================
     // CANDIDATES FOR MANUAL AFFECTATION (new prelevement)
     // =========================================================================
@@ -131,16 +140,29 @@ public class PrelevementServiceImpl implements IPrelevementService {
                 p.getDateOperation()
         );
 
-        List<Shell> solution = trouverCombinaisonExacte(candidats, p.getMontant());
-        if (solution.isEmpty()) {
-            throw new IllegalStateException("Aucune combinaison exacte trouvée pour l'auto-affectation.");
+        MatchingAnalysisResult analysis = analyzeMatching(candidats, p.getMontant());
+
+        if (analysis.matchType == MatchType.UNIQUE_MATCH) {
+            applyAssignment(p, analysis.autoAssignedShells);
+
+            PrelevementDetailsResponse response = new PrelevementDetailsResponse(p, p.getShells());
+            response.setMatchType(MatchType.UNIQUE_MATCH);
+            response.setCandidateShells(analysis.candidateShells);
+            response.setExactSolutions(toSolutionDtos(analysis.exactSolutions)); // ✅ AJOUT ICI
+            response.setNumberOfExactSolutions(analysis.numberOfExactSolutions);
+            response.setExactMatch(true);
+            return response;
         }
 
-        applyAssignment(p, solution);
+        PrelevementDetailsResponse response = new PrelevementDetailsResponse(p, new ArrayList<>());
+        response.setMatchType(analysis.matchType);
+        response.setCandidateShells(analysis.candidateShells);
+        response.setExactSolutions(toSolutionDtos(analysis.exactSolutions)); // ✅ AJOUT ICI
+        response.setNumberOfExactSolutions(analysis.numberOfExactSolutions);
+        response.setExactMatch(false);
 
-        return new PrelevementDetailsResponse(p, p.getShells());
+        return response;
     }
-
     // =========================================================================
     // CANDIDATES FOR EDIT MODAL
     // =========================================================================
@@ -177,7 +199,7 @@ public class PrelevementServiceImpl implements IPrelevementService {
 
     @Override
     public List<Prelevement> getAllPrelevements() {
-        return prelevementRepository.findAll();
+        return prelevementRepository.findAllByOrderByIdPrelevementDesc();
     }
 
     @Override
@@ -442,5 +464,133 @@ public class PrelevementServiceImpl implements IPrelevementService {
         if (nature == NatureOperation.AVOIR) return -shell.getMontant();
         if (nature.name().startsWith("FACTURE") || nature == NatureOperation.LOYER) return shell.getMontant();
         return 0.0;
+    }
+
+    private static class MatchingAnalysisResult {
+        private final MatchType matchType;
+        private final List<Shell> autoAssignedShells;
+        private final List<Shell> candidateShells;
+        private final List<List<Shell>> exactSolutions;
+        private final int numberOfExactSolutions;
+
+        public MatchingAnalysisResult(
+                MatchType matchType,
+                List<Shell> autoAssignedShells,
+                List<Shell> candidateShells,
+                List<List<Shell>> exactSolutions,
+                int numberOfExactSolutions
+        ) {
+            this.matchType = matchType;
+            this.autoAssignedShells = autoAssignedShells;
+            this.candidateShells = candidateShells;
+            this.exactSolutions = exactSolutions;
+            this.numberOfExactSolutions = numberOfExactSolutions;
+        }
+    }
+
+    private MatchingAnalysisResult analyzeMatching(List<Shell> candidats, double montantCible) {
+
+        List<List<Shell>> exactSolutions = trouverToutesLesCombinaisonsExactes(candidats, montantCible);
+
+        if (exactSolutions.size() == 1) {
+            List<Shell> uniqueSolution = exactSolutions.get(0);
+
+            return new MatchingAnalysisResult(
+                    MatchType.UNIQUE_MATCH,
+                    uniqueSolution,
+                    uniqueSolution,
+                    exactSolutions,
+                    1
+            );
+        }
+
+        if (exactSolutions.size() > 1) {
+
+            List<Shell> candidateShells = exactSolutions.stream()
+                    .flatMap(List::stream)
+                    .collect(Collectors.toMap(
+                            Shell::getIdShell,
+                            s -> s,
+                            (a, b) -> a,
+                            LinkedHashMap::new
+                    ))
+                    .values()
+                    .stream()
+                    .sorted(Comparator.comparing(Shell::getDatePrelevement))
+                    .collect(Collectors.toList());
+
+            return new MatchingAnalysisResult(
+                    MatchType.AMBIGUOUS_MATCH,
+                    new ArrayList<>(),
+                    candidateShells,
+                    exactSolutions,
+                    exactSolutions.size()
+            );
+        }
+
+        List<Shell> allCandidates = candidats.stream()
+                .sorted(Comparator.comparing(Shell::getDatePrelevement))
+                .collect(Collectors.toList());
+
+        return new MatchingAnalysisResult(
+                MatchType.NO_EXACT_MATCH,
+                new ArrayList<>(),
+                allCandidates,
+                exactSolutions,
+                0
+        );
+    }
+    private List<List<Shell>> trouverToutesLesCombinaisonsExactes(List<Shell> candidats, double montantCible) {
+        List<Shell> sorted = candidats.stream()
+                .sorted(Comparator.comparingDouble((Shell s) -> Math.abs(getContribution(s))).reversed())
+                .collect(Collectors.toList());
+
+        List<List<Shell>> resultats = new ArrayList<>();
+        trouverToutesLesCombinaisonsRecursif(sorted, 0, new ArrayList<>(), 0.0, montantCible, resultats);
+
+        return resultats;
+    }
+
+    private void trouverToutesLesCombinaisonsRecursif(
+            List<Shell> shells,
+            int index,
+            List<Shell> courant,
+            double sommeCourante,
+            double cible,
+            List<List<Shell>> resultats
+    ) {
+        if (Math.abs(sommeCourante - cible) < 0.001) {
+            resultats.add(new ArrayList<>(courant));
+            return;
+        }
+
+        if (index >= shells.size()) {
+            return;
+        }
+
+        for (int i = index; i < shells.size(); i++) {
+            Shell shell = shells.get(i);
+            courant.add(shell);
+
+            trouverToutesLesCombinaisonsRecursif(
+                    shells,
+                    i + 1,
+                    courant,
+                    sommeCourante + getContribution(shell),
+                    cible,
+                    resultats
+            );
+
+            courant.remove(courant.size() - 1);
+        }
+    }
+
+    private List<PrelevementSolutionDto> toSolutionDtos(List<List<Shell>> exactSolutions) {
+        return exactSolutions.stream()
+                .map(solution -> solution.stream()
+                        .sorted(Comparator.comparing(Shell::getDatePrelevement))
+                        .collect(Collectors.toList()))
+                .map(PrelevementSolutionDto::new)
+                .collect(Collectors.toList());
     }
 }

@@ -49,7 +49,8 @@ public class BankStatementPdfService {
 
             PdfRendererBuilder builder = new PdfRendererBuilder();
             builder.useFastMode();
-            builder.withHtmlContent(html, null);
+            String baseUrl = getClass().getResource("/static/").toExternalForm();
+            builder.withHtmlContent(html, baseUrl);
             builder.toStream(outputStream);
             builder.run();
 

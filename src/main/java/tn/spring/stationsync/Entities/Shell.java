@@ -1,6 +1,7 @@
 package tn.spring.stationsync.Entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
@@ -50,6 +51,8 @@ public class Shell {
 
     @Enumerated(EnumType.STRING)
     private Station station;
+
+
 
     // Getters and Setters
 
@@ -103,14 +106,14 @@ public class Shell {
         this.statut = statut;
     }
 
-
+    @JsonIgnoreProperties({"shells"})
     @ManyToOne
     @JoinColumn(name = "prelevement_id")
-    @JsonIgnore
 
     private Prelevement prelevement;
 
     public Prelevement getPrelevement() {
+
         return prelevement;
     }
 

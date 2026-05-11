@@ -78,8 +78,17 @@ public class ShellServiceImpl implements IShellService {
 
     @Override
     public void deleteShell(Integer idShell) {
-        shellRepository.deleteById(idShell);
 
+        Shell shell = shellRepository.findById(idShell)
+                .orElseThrow(() -> new RuntimeException("Facture introuvable"));
+
+        if (shell.getStatut() == Statut.OK) {
+            throw new RuntimeException(
+                    "Impossible de supprimer une facture déjà associée à un prélèvement."
+            );
+        }
+
+        shellRepository.delete(shell);
     }
 
     @Override
@@ -97,11 +106,7 @@ public class ShellServiceImpl implements IShellService {
 
             Shell saved = shellRepository.save(existingShell);
 
-            // garder cohérence notifications
-            notificationService.resolveByRef(
-                    tn.spring.stationsync.Entities.NotificationType.SHELL,
-                    saved.getIdShell()
-            );
+
 
             return saved;
         }
