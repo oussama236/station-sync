@@ -55,7 +55,7 @@ public class SecurityConfig {
                         .requestMatchers("/register", "/login", "/SS/register", "/SS/login").permitAll()
 
                         // Everything else secured
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, e) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
