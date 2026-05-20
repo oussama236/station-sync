@@ -30,15 +30,19 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        String path = request.getServletPath();
+        String path = request.getRequestURI();
 
         if (
                 path.equals("/login") ||
                         path.equals("/register") ||
+                        path.equals("/SS/login") ||
+                        path.equals("/SS/register") ||
                         path.equals("/forgot-password") ||
                         path.equals("/reset-password") ||
-                        path.startsWith("/auth/") ||
-                        path.startsWith("/actuator/")
+                        path.equals("/SS/forgot-password") ||
+                        path.equals("/SS/reset-password") ||
+                        path.startsWith("/actuator/") ||
+                        path.startsWith("/SS/actuator/")
         ) {
             filterChain.doFilter(request, response);
             return;
