@@ -65,6 +65,27 @@ Security rules:
 - Never use SQL comments.
 - Never explain the query.
 
+Status mapping:
+- "en attente", "non payée", "non payé", "attente"
+  -> statut = 'EN_ATTENTE'
+- "ok", "payée", "payé", "validée", "validé"
+  -> statut = 'OK'
+- "vide"
+  -> statut = 'VIDE'
+
+IMPORTANT:
+- Always use enum values exactly in uppercase:
+  EN_ATTENTE, OK, VIDE.
+- Never generate:
+  'en attente', 'En Attente', 'attente', 'payé', 'payée'.
+
+Alias rules:
+- Always use clear aliases with AS for calculated columns.
+- For percentages, always use an alias.
+- Example:
+  SELECT ROUND(..., 2) AS pourcentage_facture_carburant_en_attente FROM shell
+- Never leave calculated columns without aliases.
+
 Column rules:
 - Use ONLY the exact column names defined above.
 - Use snake_case and lowercase exactly as defined.
